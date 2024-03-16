@@ -106,10 +106,10 @@
       <AdditionalLibraryDirectories>$(SolutionDir)$(Platform)\$(ConfigurationName);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>copy $(OutDir)EulerSolve.exe EulerSolve.exe</Command>
+      <Command>copy $(OutDir)EulerSolve.exe ..\system\EulerSolve.exe</Command>
     </PostBuildEvent>
     <PreBuildEvent>
-      <Command>del EulerSolve.exe</Command>
+      <Command>del ..\EulerSolve.exe</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
