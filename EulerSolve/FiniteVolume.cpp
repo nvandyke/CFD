@@ -82,9 +82,9 @@ Matrix residual(FVstate u, FVmesh m, FVConditions c, Matrix& dt, double CFL) {
         gradient(u, m);
 
     //internal edges
-#pragma omp parallel
+//#pragma omp parallel
     {
-#pragma omp for reduction(+:R,sl)
+//#pragma omp for reduction(+:R,sl)
         for (i = 0; i < m.I2E.rows(); ++i) {
 
 
