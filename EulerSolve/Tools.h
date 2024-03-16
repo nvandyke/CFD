@@ -1,22 +1,17 @@
 #ifndef TOOLS_H
 #define TOOLS_H
 
-//#define EIGEN_DONT_VECTORIZE
-//#define EIGEN_DISABLE_UNALIGNED_ARRAY_ASSERT
-
-//#include <Eigen/Dense>
 #include <math.h>
 #include <string>
 #include <fstream>
 #include <iostream>
 #include <vector>
 #include "matrix.h"
-//using namespace Eigen;
+
 using namespace std;
 const double y = 1.4;
 const double pi = 3.14159265358979323846;
 
-//void printResults(const MatrixXd& u, const VectorXd& e);
 void printResults(Matrix& u, Matrix& e);
 
 Matrix roots(double a, double b, double c);
@@ -24,23 +19,16 @@ Matrix roots(double a, double b, double c);
 double max(double a, double b);
 double min(double a, double b);
 
-//General Methods
-//double waveSpeed(const Vector4d& u, const Vector2d& n);
 double waveSpeed(Matrix& u, Matrix& n);
 
-//Vector4d flux(const Vector4d& uL, const Vector4d& uR, const Vector2d& n, int R);
 Matrix flux(Matrix& uL, Matrix& uR, Matrix& n, int R);
 
-//MatrixXd F(const Vector4d& u);
 Matrix F(Matrix& u);
 
-//Vector4d Outflow(const Vector4d& u, const Vector2d& n, double Pb);
 Matrix Outflow(Matrix& u, Matrix& n, double Pb);
 
-//Vector4d Inflow(const Vector4d& u, const Vector2d& n, double Tt, double Pt, double a, double R);
 Matrix Inflow(Matrix& u, Matrix& n, double Tt, double Pt, double a, double R);
 
-//Vector4d wallFlux(const Vector4d& u, const Vector2d& n);
 Matrix wallFlux(Matrix& u, Matrix& n);
 
 
@@ -103,10 +91,8 @@ public:
 //Finite Volume Methods
 Matrix FV_solve(FVstate& u, FVmesh m, FVConditions c);
 
-//MatrixXd residual(FVstate& u, const FVmesh& m, const FVConditions& c, MatrixXd& dt, double CFL);
 Matrix residual(FVstate u, FVmesh m, FVConditions c, Matrix& dt, double CFL);
 
-//void gradient(FVstate& u, const FVmesh& m);
 void gradient(FVstate& u, FVmesh& m);
 
 //

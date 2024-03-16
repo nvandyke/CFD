@@ -1,37 +1,6 @@
 #include "Tools.h"
 #include "matrix.h"
 #include <assert.h>
-/*
-void printResults(const MatrixXd& u, const VectorXd& e)
-{
-    //sizes of data
-    int a, b, c;
-    a = u.rows();
-    b = u.cols();
-    c = e.rows();
-
-    //output state
-    ofstream output1;
-    output1.open("u.txt");
-
-    for (int i = 0; i < a; ++i) {
-        for (int j = 0; j < b; ++j) {
-            output1 << u(i, j) << " ";
-        }
-        output1 << endl;
-    }
-    output1.close();
-
-    //output residual history
-    ofstream output2;
-    output2.open("e.txt");
-
-    for (int i = 0; i < c; ++i) {
-        output2 << e(i) << endl;
-    }
-    output2.close();
-}
-*/
 
 void printResults(Matrix& u, Matrix& e) {
     //sizes of data
@@ -72,21 +41,6 @@ void printResults(Matrix& u, Matrix& e) {
     output2.close();
 }
 
-/*
-Vector2d roots(double a, double b, double c)
-{
-    //calculate real roots to quadratic functions
-
-    double discriminant = b * b - 4 * a * c;
-    Vector2d ans(0, 0);
-    if (discriminant >= 0)
-        ans << (-b + sqrt(discriminant)) / (2 * a), (-b - sqrt(discriminant)) / (2 * a);
-    else
-        ans << -9999, -9999; //dummy numbers
-
-    return ans;
-}
-*/
 
 Matrix roots(double a, double b, double c) {
     //calculate real roots to quadratic functions
@@ -105,17 +59,6 @@ Matrix roots(double a, double b, double c) {
     return ans;
 }
 
-/*
-double waveSpeed(const Vector4d& u, const Vector2d& n)
-{
-    Vector2d v(u(1) / u(0), u(2) / u(0));				//velocity
-    double P = (y - 1) * (u(3) - .5 * u(0) * v.dot(v));	//pressure
-    double c = sqrt(y * P / u(0));						//speed of sound
-    double vn = v.dot(n);								//normal velocity
-    double s = fabs(vn) + c;							//wave speed
-    return s;
-}
-*/
 
 double max(double a, double b) {
     if (a > b) {
@@ -144,86 +87,9 @@ double waveSpeed(Matrix& u, Matrix& n) {
     return s;
 }
 
-/*
-Vector4d flux(const Vector4d& uL, const Vector4d& uR, const Vector2d& n, int R)
-{
-    //Left state
-    Vector2d vL(uL(1) / uL(0), uL(2) / uL(0));
-    double PL = (y - 1) * (uL(3) - .5 * uL(0) * vL.dot(vL));
-    double HL = (uL(3) + PL) / uL(0);
-    double cL = (y - 1) * (HL - .5 * vL.dot(vL));
-    double sL = abs(vL.dot(n)) + cL;
-
-    //Right state
-    Vector2d vR(uR(1) / uR(0), uR(2) / uR(0));
-    double PR = (y - 1) * (uR(3) - .5 * uR(0) * vR.dot(vR));
-    double HR = (uR(3) + PR) / uR(0);
-    double cR = (y - 1) * (HR - .5 * vR.dot(vR));
-    double sR = abs(vR.dot(n)) + cR;
-
-    //Rusanov flux max wave speed
-    double smaxRus = max(sL, sR);
-
-    //HLLE flux calcs
-    double smax = max(max(0.0, vL.dot(n) + cL), max(0.0, vR.dot(n) + cR));
-    double smin = min(min(0.0, vL.dot(n) - cL), min(0.0, vR.dot(n) - cR));
-
-    //Roe-averaged state
-    Vector2d v = (sqrt(uL(0)) * vL + sqrt(uR(0)) * vR) / (sqrt(uL(0)) + sqrt(uR(0)));
-    double H = (sqrt(uL(0)) * HL + sqrt(uR(0)) * HR) / (sqrt(uL(0)) + sqrt(uR(0)));
-    double u = v.dot(n);
-    double q2 = pow(v.norm(),2);
-    double c = (y - 1) * (H - .5 * q2);
-
-    //eigenvalues
-    Vector4d lambda(u + c, u - c, u, u);
-    double e = 0.1 * c;
-    for (int i = 0; i < 4; ++i) {
-        if (abs(lambda(i)) < e)
-            lambda(i) = (pow(e, 2) + pow(lambda(i), 2)) / (2 * e);
-    }
-
-    //subcalcs for A matrix
-    double s1 = .5 * (abs(lambda(0)) + abs(lambda(1)));
-    double s2 = .5 * (abs(lambda(0)) - abs(lambda(1)));
-
-    double G1 = (y - 1) * (q2 / 2 * (uR(0) - uL(0)) - v.dot((uR(0) * vR - uL(0) * vL)) + (uR(3) - uL(3)));
-    double G2 = -u * (uR(0) - uL(0)) + n.dot((uR(0) * vR - uL(0) * vL));
-
-    double C1 = G1 *pow(c,-2) * (s1 - abs(lambda(2))) + G2 / c * s2;
-    double C2 = G1 / c * s2 + (s1 - abs(lambda(2))) * G2;
-
-    //upwinding
-    Vector4d A;
-    A(0) = abs(lambda(2)) * (uR(0) - uL(0)) + C1;
-    A(1) = abs(lambda(2)) * (uR(0) * vR(0) - uL(0) * vL(0)) + C1 * v(0) + C2 * n(0);
-    A(2) = abs(lambda(2)) * (uR(0) * vR(1) - uL(0) * vL(1)) + C1 * v(1) + C2 * n(1);
-    A(3) = abs(lambda(2)) * (uR(3) - uL(3)) + C1 * H + C2 * u;
-
-    //numerical flux calculation
-    MatrixXd nT= n.transpose();
-    Vector4d fRoe = .5 * (F(uL) * n + F(uR) * n) - .5 * A;
-    Vector4d fHLLE = .5 * (F(uL) * n + F(uR) * n) - .5 * (smax + smin) / (smax - smin) * (F(uR)*n - F(uL) * n) + smax * smin / (smax - smin) * (uR - uL);
-    Vector4d fRus = .5*(F(uL) * n + F(uR)*n) - .5 * smax*(uR - uL);
-
-    //decide which flux to use
-    if (R == 0)
-        return fRoe;
-    else if (R == 1)
-        return fHLLE;
-    else if (R == 2)
-        return fRus;
-    else
-        return fRoe;
-
-
-}
-*/
 
 Matrix flux(Matrix& uL, Matrix& uR, Matrix& n, int R) {
 
-    //uL.print();
-    //uR.print();
     //Left state
     double rhoL = uL(0, 0);
     double rhoEL = uL(0, 3);
@@ -335,18 +201,6 @@ Matrix flux(Matrix& uL, Matrix& uR, Matrix& n, int R) {
 
 }
 
-/*
-MatrixXd F(const Vector4d& u)
-{
-    Vector2d v(u(1) / u(0), u(2) / u(0));
-    MatrixXd f(4, 2);
-    f << u(1), u(2),
-        u(1)* u(1) / u(0) + (y - 1) * (u(3) - .5 * u(0) * v.dot(v)), u(1)* u(2) / u(0),
-        u(1)* u(2) / u(0), u(2)* u(2) / u(0) + (y - 1) * (u(3) - .5 * u(0) * v.dot(v)),
-        u(3)* u(1) / u(0) + u(1) / u(0) * (y - 1) * (u(3) - .5 * u(0) * v.dot(v)), u(3)* u(2) / u(0) + u(2) / u(0) * (y - 1) * (u(3) - .5 * u(0) * v.dot(v));
-    return f;
-}
-*/
 
 Matrix F(Matrix& u) {
     Matrix v = u.getBlock(0, 1, 1, 2);
@@ -370,26 +224,6 @@ Matrix F(Matrix& u) {
     return f;
 }
 
-/*
-Vector4d Outflow(const Vector4d& u, const Vector2d& n, double Pb)
-{
-    //internal state quantities
-    Vector2d v(u(1) / u(0), u(2) / u(0));				//velocity
-    double P = (y - 1) * (u(3) - .5 * u(0) * v.dot(v));	//pressure
-    double c = sqrt(y * P / u(0));						//speed of sound
-    double S = P * pow(u(0), -y);						//entropy
-
-    double pb = pow(Pb / S, 1 / y);						//boundary density
-    double cb = sqrt(y * Pb / pb);						//boundary speed of sound
-    double ubn = v.dot(n) + 2 * (c - cb) / (y - 1);		//boundary normal component of velocity
-    Vector2d vb = v - v.dot(n) * n + ubn * n;			//boundary velocity
-    double pEb = Pb / (y - 1) + .5 * pb * vb.dot(vb);	//energy term
-
-    //state construction
-    Vector4d ub(pb, pb * vb(0), pb * vb(1), pEb);
-    return ub;
-}
-*/
 
 Matrix Outflow(Matrix& u, Matrix& n, double Pb) {
     //internal state quantities
@@ -415,54 +249,6 @@ Matrix Outflow(Matrix& u, Matrix& n, double Pb) {
     return ub;
 }
 
-/*
-Vector4d Inflow(const Vector4d& u, const Vector2d& n, double Tt, double Pt, double a, double R)
-{
-    //internal state quantities
-    Vector2d v(u(1) / u(0), u(2) / u(0));				//velocity
-    double P = (y - 1) * (u(3) - .5 * u(0) * v.dot(v));	//pressure
-    double c = sqrt(y * P / u(0));						//speed of sound
-    double J = v.dot(n) + 2 * c / (y - 1);				//riemann invariant J+
-
-    //quantities for computing Mach #
-    Vector2d nin(cos(a), sin(a));
-    double dn = nin.dot(n);
-
-    Vector2d Mb = roots(y * R * Tt * dn * dn - (y - 1) / 2 * J * J, 4 * y * R * Tt * dn / (y - 1), 4 * y * R * Tt * pow(y - 1, -2) - J * J);
-    double MB;
-
-    //since it's quadratic, we need to grab appropriate number
-    if (Mb(0) > 0 && Mb(1) > 0) {
-        if (Mb(0) >= Mb(1))
-            MB = Mb(0);
-        else
-            MB = Mb(1);
-    }
-    else if (Mb(0) > 0) {
-        MB = Mb(0);
-    }
-    else if (Mb(1) > 0) {
-        MB = Mb(1);
-    }
-    else {
-        //catch errors
-        cout << "you fucked up, " << Mb << endl;
-        MB = 0.5;
-    }
-
-    //define boundary state
-    double Tb = Tt / (1 + .5 * (y - 1) * MB * MB);
-    double Pb = Pt * pow(Tb / Tt, y / (y - 1));
-    double pb = Pb / (R * Tb);
-    double cb = sqrt(y * Pb / pb);
-    Vector2d vb = MB * cb * nin;
-    double pEb = Pb / (y - 1) + .5 * pb * vb.dot(vb);
-
-    //output
-    Vector4d ub(pb, pb * vb(0), pb * vb(1), pEb);
-    return ub;
-}
-*/
 
 Matrix Inflow(Matrix& u, Matrix& n, double Tt, double Pt, double a, double R) {
     //internal state quantities
@@ -515,17 +301,6 @@ Matrix Inflow(Matrix& u, Matrix& n, double Tt, double Pt, double a, double R) {
     return ub;
 }
 
-/*
-Vector4d wallFlux(const Vector4d& u, const Vector2d& n)
-{
-    Vector2d v(u(1) / u(0), u(2) / u(0));					//velocity
-    Vector2d vb = v - v.dot(n) * n;							//velocity at boundary
-    double Pb = (y - 1) * (u(3) - .5 * u(0) * vb.dot(vb));	//pressure at boundary
-    Vector4d f(0, Pb * n(0), Pb * n(1), 0);					//flux
-    return f;
-
-}
-*/
 
 Matrix wallFlux(Matrix& u, Matrix& n) {
     Matrix v = u.getBlock(0, 1, 1, 2);
