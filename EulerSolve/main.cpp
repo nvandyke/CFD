@@ -1,11 +1,12 @@
 #include "Tools.h"
 #include "matrix.h"
 #include <iostream>
+#include <omp.h>
 
 
 void FVrun() {
     //string filename = "mesh.txt";
-    FVmesh m("test.gri");
+    FVmesh m("meshes/bump0.gri");
     double Mach = 0.5;
     double angleOfAttack = 0.0;
     int order = 1;
@@ -17,9 +18,9 @@ void FVrun() {
     printResults(u.u, e);
 
 
-    u.Order = 2;
-    Matrix e2 = FV_solve(u, m, c);
-    printResults(u.u, e2);
+    //u.Order = 2;
+    //Matrix e2 = FV_solve(u, m, c);
+    //printResults(u.u, e2);
     return;
 }
 
@@ -35,6 +36,7 @@ void FVrun() {
 
 
 int main() {
+    omp_set_num_threads(8);
     std::cout.precision(15);
     std::cout << std::fixed;
     FVrun();

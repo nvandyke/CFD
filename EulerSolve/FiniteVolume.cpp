@@ -57,78 +57,102 @@ Matrix residual(FVstate u, FVmesh m, FVConditions c, Matrix& dt, double CFL) {
     Matrix R(u.u.rows(), u.u.cols());
     Matrix sl(u.u.rows(), 1);
 
+
+    Matrix gradux_l = Matrix(1, 4);
+    Matrix graduy_l = Matrix(1, 4);
+    Matrix gradux_r = Matrix(1, 4);
+    Matrix graduy_r = Matrix(1, 4);
+    Matrix gradux_i = Matrix(1, 4);
+    Matrix graduy_i = Matrix(1, 4);
+    Matrix uL       = Matrix(1, 4);
+    Matrix uR       = Matrix(1, 4);
+    Matrix ui       = Matrix(1, 4);
+    Matrix uout     = Matrix(1, 4);
+    Matrix block    = Matrix(1, 4);
+    Matrix R_l      = Matrix(1, 4);
+    Matrix R_r      = Matrix(1, 4);
+    Matrix f        = Matrix(4, 1);
+    Matrix n        = Matrix(1, 2);
+    Matrix uin      = Matrix(1, 2);
+    int i, j, k;
+    double l;
+
     //gradient for second order
     if (u.Order == 2)
         gradient(u, m);
 
     //internal edges
-    for (int i = 0; i < m.I2E.rows(); ++i) {
+#pragma omp parallel
+    {
+#pragma omp for reduction(+:R,sl)
+        for (i = 0; i < m.I2E.rows(); ++i) {
 
 
-        int j = int(m.I2E(i, 0));
-        int k = int(m.I2E(i, 2));
-        Matrix uL = u.u.getBlock(j, 0, 1, 4);
-        Matrix uR = u.u.getBlock(k, 0, 1, 4);
+            j = int(m.I2E(i, 0));
+            k = int(m.I2E(i, 2));
+            uL = u.u.getBlock(j, 0, 1, 4);
+            uR = u.u.getBlock(k, 0, 1, 4);
 
-        if (u.Order == 2) {
-            Matrix gradux_l = u.gradux.getBlock(j, 0, 1, 4);
-            Matrix graduy_l = u.graduy.getBlock(j, 0, 1, 4);
-            Matrix gradux_r = u.gradux.getBlock(k, 0, 1, 4);
-            Matrix graduy_r = u.graduy.getBlock(k, 0, 1, 4);
+            if (u.Order == 2) {
+                gradux_l = u.gradux.getBlock(j, 0, 1, 4);
+                graduy_l = u.graduy.getBlock(j, 0, 1, 4);
+                gradux_r = u.gradux.getBlock(k, 0, 1, 4);
+                graduy_r = u.graduy.getBlock(k, 0, 1, 4);
 
-            //std::cout << "before\n" << uL << endl << uR << endl;
+                //std::cout << "before\n" << uL << endl << uR << endl;
 
-            uL = uL + (gradux_l * (m.Ir(i, 0) - m.C(j, 0)) + graduy_l * (m.Ir(i, 1) - m.C(j, 1)));
-            uR = uR + (gradux_r * (m.Ir(i, 0) - m.C(k, 0)) + graduy_r * (m.Ir(i, 1) - m.C(k, 1)));
+                uL += (gradux_l * (m.Ir(i, 0) - m.C(j, 0)) + graduy_l * (m.Ir(i, 1) - m.C(j, 1)));
+                uR += (gradux_r * (m.Ir(i, 0) - m.C(k, 0)) + graduy_r * (m.Ir(i, 1) - m.C(k, 1)));
 
 
-            //std::cout << "after\n" << uL << endl << uR << endl;
+                //std::cout << "after\n" << uL << endl << uR << endl;
 
-            //std::cout << gradux_l << endl;
-            //std::cout << graduy_l << endl;
-            //std::cout << gradux_r << endl;
-            //std::cout << graduy_r << endl;
-            //std::cout << endl;
+                //std::cout << gradux_l << endl;
+                //std::cout << graduy_l << endl;
+                //std::cout << gradux_r << endl;
+                //std::cout << graduy_r << endl;
+                //std::cout << endl;
 
+
+            }
+            n = m.In.getBlock(i, 0, 1, 2);
+            l = m.Il(i, 0);
+            f = flux(uL, uR, n, 0);
+            //f.print();
+            double ws = max(waveSpeed(uL, n), waveSpeed(uR, n));
+
+            R_l = R.getBlock(j, 0, 1, 4) + (f.transpose() * l);
+            R_r = R.getBlock(k, 0, 1, 4) - (f.transpose() * l);
+
+            R.setBlock(j, 0, R_l);
+            R.setBlock(k, 0, R_r);
+
+            //vec d = R.getBlock(j, 0, 1, 4);
+            //d.print();
+
+            sl(j, 0) = sl(j, 0) + ws * l;
+            sl(k, 0) = sl(k, 0) + ws * l;
 
         }
-        Matrix n = m.In.getBlock(i, 0, 1, 2);
-        double l = m.Il(i, 0);
-        Matrix f = flux(uL, uR, n, 0);
-        //f.print();
-        double ws = max(waveSpeed(uL, n), waveSpeed(uR, n));
-
-        Matrix R_l = R.getBlock(j, 0, 1, 4) + (f.transpose() * l);
-        Matrix R_r = R.getBlock(k, 0, 1, 4) - (f.transpose() * l);
-
-        R.setBlock(j, 0, R_l);
-        R.setBlock(k, 0, R_r);
-
-        //vec d = R.getBlock(j, 0, 1, 4);
-        //d.print();
-
-        sl(j, 0) = sl(j, 0) + ws * l;
-        sl(k, 0) = sl(k, 0) + ws * l;
-
     }
     //R.print();
 
     //boundary edges
-    for (int i = 0; i < m.B2E.rows(); ++i) {
-        int j = int(m.B2E(i, 0));
-        Matrix ui = u.u.getBlock(j, 0, 1, 4);
+    for (i = 0; i < m.B2E.rows(); ++i) {
+        j = int(m.B2E(i, 0));
+        ui = u.u.getBlock(j, 0, 1, 4);
         if (u.Order == 2) {
-            Matrix gradux_i = u.gradux.getBlock(j, 0, 1, 4);
-            Matrix graduy_i = u.graduy.getBlock(j, 0, 1, 4);
-            ui = ui + (gradux_i * (m.Br(i, 0) - m.C(j, 0)) + graduy_i * (m.Br(i, 1) - m.C(j, 1)));
+            gradux_i = u.gradux.getBlock(j, 0, 1, 4);
+            graduy_i = u.graduy.getBlock(j, 0, 1, 4);
+            ui += (gradux_i * (m.Br(i, 0) - m.C(j, 0)) + graduy_i * (m.Br(i, 1) - m.C(j, 1)));
         }
-        Matrix n = m.Bn.getBlock(i, 0, 1, 2);
-        //n = n.transpose();
-        double l = m.Bl(i, 0);
-        Matrix uout(1, 4);
-        Matrix uin(1, 4);
+        n = m.Bn.getBlock(i, 0, 1, 2);
 
-        Matrix block = R.getBlock(j, 0, 1, 4);
+        l = m.Bl(i, 0);
+        uout(1, 4);
+        uin(1, 4);
+
+        block = R.getBlock(j, 0, 1, 4);
         switch ((int)m.B2E(i, 2)) {
         case 1:
         case 3:
@@ -193,12 +217,9 @@ Matrix residual(FVstate u, FVmesh m, FVConditions c, Matrix& dt, double CFL) {
     //R.print();
     //set time step
     dt = Matrix(sl.rows(), 4);
-    for (int i = 0; i < sl.rows(); ++i) {
+    for (i = 0; i < sl.rows(); ++i) {
         dt(i, 0) = 2 * CFL / sl(i, 0);
-        //if (dt.getAt(i, 0) > 10) {
-        //	cout << i << endl;
-        //}
-        for (int j = 1; j < 4; ++j) {
+        for (j = 1; j < dt.cols(); ++j) {
             dt(i, j) = dt(i, 0);
 
         }
@@ -212,25 +233,38 @@ void gradient(FVstate& u, FVmesh& m) {
     u.gradux = Matrix(u.u.rows(), u.u.cols());
     u.graduy = Matrix(u.u.rows(), u.u.cols());
 
+    Matrix goin_lx = Matrix(1, 4);
+    Matrix goin_rx = Matrix(1, 4);
+    Matrix goin_ly = Matrix(1, 4);
+    Matrix goin_ry = Matrix(1, 4);
+    Matrix goin_x = Matrix(1, 4);
+    Matrix goin_y = Matrix(1, 4);
+    Matrix stateAdd = Matrix(1, 4);
+    Matrix ui = Matrix(1, 4);
+    Matrix n = Matrix(1, 2);
+
     //internal edges
     for (int i = 0; i < m.I2E.rows(); ++i) {
         int j = int(m.I2E(i, 0));
         int k = int(m.I2E(i, 2));
-        Matrix uL = u.u.getBlock(j, 0, 1, 4);
-        Matrix uR = u.u.getBlock(k, 0, 1, 4);
-        Matrix n = m.In.getBlock(i, 0, 1, 2);
-        double l = m.Il(i, 0);
+        //Matrix uL = u.u.getBlock(j, 0, 1, 4);
+        //Matrix uR = u.u.getBlock(k, 0, 1, 4);
+        stateAdd = u.u.getBlock(j, 0, 1, 4) + u.u.getBlock(k, 0, 1, 4);
+        
+        n = m.In.getBlock(i, 0, 1, 2) * (m.Il(i, 0) / 2);
+        //double l = m.Il(i, 0);
 
 
-        Matrix gradux_l = u.gradux.getBlock(j, 0, 1, 4);
-        Matrix graduy_l = u.graduy.getBlock(j, 0, 1, 4);
-        Matrix gradux_r = u.gradux.getBlock(k, 0, 1, 4);
-        Matrix graduy_r = u.graduy.getBlock(k, 0, 1, 4);
+        //Matrix gradux_l = u.gradux.getBlock(j, 0, 1, 4);
+        //Matrix graduy_l = u.graduy.getBlock(j, 0, 1, 4);
+        //Matrix gradux_r = u.gradux.getBlock(k, 0, 1, 4);
+        //Matrix graduy_r = u.graduy.getBlock(k, 0, 1, 4);
 
-        Matrix goin_lx = gradux_l + (uL + uR) * (.5 * n(0, 0) * l);
-        Matrix goin_rx = gradux_r - (uL + uR) * (.5 * n(0, 0) * l);
-        Matrix goin_ly = graduy_l + (uL + uR) * (.5 * n(0, 1) * l);
-        Matrix goin_ry = graduy_r - (uL + uR) * (.5 * n(0, 1) * l);
+        goin_lx = u.gradux.getBlock(j, 0, 1, 4) + stateAdd * n(0, 0);
+        goin_rx = u.gradux.getBlock(k, 0, 1, 4) - stateAdd * n(0, 0);
+        goin_ly = u.graduy.getBlock(j, 0, 1, 4) + stateAdd * n(0, 1);
+        goin_ry = u.graduy.getBlock(k, 0, 1, 4) - stateAdd * n(0, 1);
+
         u.gradux.setBlock(j, 0, goin_lx);
         u.gradux.setBlock(k, 0, goin_rx);
 
@@ -241,35 +275,27 @@ void gradient(FVstate& u, FVmesh& m) {
     //boundary edges
     for (int i = 0; i < m.B2E.rows(); ++i) {
         int j = int(m.B2E(i, 0));
-        Matrix ui = u.u.getBlock(j, 0, 1, 4);
-        Matrix n = m.Bn.getBlock(i, 0, 1, 2);
-        double l = m.Bl(i, 0);
+        ui = u.u.getBlock(j, 0, 1, 4);
+        n = m.Bn.getBlock(i, 0, 1, 2) * m.Bl(i, 0);
+        //double l = m.Bl(i, 0);
 
-        Matrix gradux_i = u.gradux.getBlock(j, 0, 1, 4);
-        Matrix graduy_i = u.graduy.getBlock(j, 0, 1, 4);
+        //Matrix gradux_i = u.gradux.getBlock(j, 0, 1, 4);
+        //Matrix graduy_i = u.graduy.getBlock(j, 0, 1, 4);
 
-        Matrix goin_x = gradux_i + ui * n(0, 0) * l;
-        Matrix goin_y = graduy_i + ui * n(0, 1) * l;
+        goin_x = u.gradux.getBlock(j, 0, 1, 4) + ui * n(0, 0);
+        goin_y = u.graduy.getBlock(j, 0, 1, 4) + ui * n(0, 1);
+
         u.gradux.setBlock(j, 0, goin_x);
         u.graduy.setBlock(j, 0, goin_y);
 
-    }
-
-    //normalize to area
-    Matrix A(m.A.rows(), 4);
-    for (int i = 0; i < A.rows(); ++i) {
-        A(i, 0) = 1 / m.A(i, 0);
-        for (int j = 1; j < 4; ++j) {
-            A(i, j) = A(i, 0);
-        }
     }
 
     //std::cout << u.gradux << endl;
     //std::cout << u.graduy << endl;
     //std::cout << A << endl;
 
-    u.gradux = u.gradux % A;
-    u.graduy = u.graduy % A;
+    u.gradux = u.gradux % m.A;
+    u.graduy = u.graduy % m.A;
 
     return;
 }

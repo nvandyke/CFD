@@ -461,8 +461,7 @@ FVmesh::FVmesh(string filename) {
     }
 
 
-
-
+    C = Matrix(E.rows(), 2);
     In = Matrix(I2E.rows(), 2);
     Il = Matrix(I2E.rows(), 1);
     Ir = Matrix(I2E.rows(), 2);
@@ -473,6 +472,13 @@ FVmesh::FVmesh(string filename) {
         Il(i, 0) = length(I2E(i, 0), I2E(i, 1));
         Matrix midp = midpoint(I2E(i, 0), I2E(i, 1));
         Ir.setBlock(i, 0, midp);
+
+
+        Matrix temp1 = C.getBlock(I2E(i, 0), 0, 1, 2) + Ir.getBlock(i, 0, 1, 2);
+        Matrix temp3 = C.getBlock(I2E(i, 2), 0, 1, 2) + Ir.getBlock(i, 0, 1, 2);
+
+        C.setBlock(I2E(i, 0), 0, temp1);
+        C.setBlock(I2E(i, 2), 0, temp3);
     }
 
     Bn = Matrix(B2E.rows(), 2);
@@ -485,29 +491,22 @@ FVmesh::FVmesh(string filename) {
         Bl(i, 0) = length(B2E(i, 0), B2E(i, 1));
         Matrix midp = midpoint(B2E(i, 0), B2E(i, 1));
         Br.setBlock(i, 0, midp);
-    }
 
-    A = Matrix(E.rows(), 1);
-    for (int i = 0; i < E.rows(); i++) {
-        A(i, 0) = Area(i);
-    }
-
-    C = Matrix(E.rows(), 2);
-    for (int i = 0; i < I2E.rows(); i++) {
-        Matrix temp1 = C.getBlock(I2E(i, 0), 0, 1, 2) + Ir.getBlock(i, 0, 1, 2);
-        Matrix temp3 = C.getBlock(I2E(i, 2), 0, 1, 2) + Ir.getBlock(i, 0, 1, 2);
-
-        C.setBlock(I2E(i, 0), 0, temp1);
-        C.setBlock(I2E(i, 2), 0, temp3);
-    }
-
-    for (int i = 0; i < B2E.rows(); i++) {
         Matrix temp = C.getBlock(B2E(i, 0), 0, 1, 2) + Br.getBlock(i, 0, 1, 2);
 
         C.setBlock(B2E(i, 0), 0, temp);
     }
 
-    C = C / 3;
+    C /= 3;
+
+    A = Matrix(E.rows(), 4);
+    for (int i = 0; i < E.rows(); i++) {
+        A(i, 0) = 1 / Area(i);
+        for (int j = 1; j < A.cols(); ++j) {
+            A(i, j) = A(i, 0);
+        }
+    }
+
 
     cout << filename << " error: " << verify() << endl << endl;
     /*
@@ -624,8 +623,8 @@ Matrix FVmesh::boundaryConnectivity(Matrix& E, Matrix& boundary, int bgroup) {
 
     for (int i = 0; i < boundary.rows(); i++) {
 
-        int n1 = boundary(i, 0);
-        int n2 = boundary(i, 1);
+        int n1 = int(boundary(i, 0));
+        int n2 = int(boundary(i, 1));
         vector<vector<int>> saved;
 
         for (int j = 0; j < E.rows(); j++) {
@@ -645,7 +644,7 @@ Matrix FVmesh::boundaryConnectivity(Matrix& E, Matrix& boundary, int bgroup) {
             for (int k = 0; k < 3; k++) {
 
                 if (E(saved[j][0], k) == n2) {
-                    int face;
+                    int face = -1;
                     if (saved[j][1] == 0 and k == 1 or saved[j][1] == 1 and k == 0) {
                         face = 2;
                     } else if (saved[j][1] == 1 and k == 2 or saved[j][1] == 2 and k == 1) {

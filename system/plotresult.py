@@ -16,17 +16,60 @@ def readresult(filename):
     
     return result
 
+def readerror(filename):
+    with open(filename,'r') as f:
+        lines = f.readlines()
+    vals = []
+    for line in lines:
+        line = float(line.strip())
+        if not line:
+            break
+        vals.append(line)
+    return vals
 
 def normalize(data):
     return (data-np.min(data))/(np.max(data)-np.min(data)) 
 
+def plotPDE(mesh,vals):
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    colorMap = plt.get_cmap('jet')
+    
+    vals = normalize(vals)
 
-resultfile= 'u2.txt'
-meshfile = 'bump2.gri'
-#meshfile = 'test.gri'
+
+    patches = []
+    for index, triangle in enumerate(mesh['E']):
+        constructed = []
+        for vertex in triangle:
+            constructed.append(mesh['V'][vertex])
+        constructed = np.array(constructed)
+        #print(constructed)
+        
+        tri = plt.Polygon(constructed,color=colorMap(vals[index]))
+        patches.append(tri)
+        #plt.gca().add_patch(tri)
+    ax.add_collection(PatchCollection(patches, match_original=True))
+    ax.set_xlim([-2,2])
+    ax.set_ylim([-.5,1.5])
+
+def ploterror(error):
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    
+    plt.semilogy(error)
+    plt.plot([0,len(error)],[1e-7]*2)
+    plt.xlabel('Iteration')
+    plt.ylabel('Residual')
+
+resultfile = 'u.txt'
+errorfile = 'e.txt'
+meshfile = 'meshes\\bump5.gri'
 
 mesh = readgri(meshfile)
 result = readresult(resultfile)
+error = readerror(errorfile)
+
 speed = np.sqrt((result[:,1]/result[:,0])**2 + (result[:,2]/result[:,0])**2)
 y = 1.4
 Pressure = (y-1)*(result[:,3] - .5 * result[:,0]*speed**2)
@@ -34,27 +77,10 @@ c = np.sqrt(y*Pressure/result[:,0])
 Mach = speed/c
 
 
-vals = normalize(Mach)
 
 #print(mesh)
 #print(result)
-fig = plt.figure()
-ax = fig.add_subplot(111)
-colorMap = plt.get_cmap('jet')
-
-
-patches = []
-for index, triangle in enumerate(mesh['E']):
-    constructed = []
-    for vertex in triangle:
-        constructed.append(mesh['V'][vertex])
-    constructed = np.array(constructed)
-    #print(constructed)
-    
-    tri = plt.Polygon(constructed,color=colorMap(vals[index]))
-    patches.append(tri)
-    #plt.gca().add_patch(tri)
-ax.add_collection(PatchCollection(patches, match_original=True))
-ax.set_xlim([-2,2])
-ax.set_ylim([-.5,1.5])
+plotPDE(mesh,Mach)
+ploterror(error)
 plt.show()
+
