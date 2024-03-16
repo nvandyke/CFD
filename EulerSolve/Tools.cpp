@@ -47,14 +47,10 @@ Matrix roots(double a, double b, double c) {
 
     double discriminant = b * b - 4 * a * c;
     Matrix ans(2, 1);
-    if (discriminant >= 0) {
-        ans(0, 0) = (-b + sqrt(discriminant)) / (2 * a);
-        ans(1, 0) = (-b - sqrt(discriminant)) / (2 * a);
-    } else {
-        //dummy numbers
-        ans(0, 0) = -9999;
-        ans(1, 0) = -9999;
-    }
+    assert(discriminant >= 0);
+    double discriminant_sqrt = sqrt(discriminant);
+    ans(0, 0) = (-b + discriminant_sqrt) / (2 * a);
+    ans(1, 0) = (-b - discriminant_sqrt) / (2 * a);
 
     return ans;
 }
@@ -77,47 +73,60 @@ double min(double a, double b) {
 }
 
 double waveSpeed(Matrix& u, Matrix& n) {
+
+    //velocity
     Matrix v = u.getBlock(0, 1, 1, 2);
     v(0, 0) = v(0, 0) / u(0, 0);
-    v(0, 1) = v(0, 1) / u(0, 0);							//velocity
-    double P = (y - 1) * (u(0, 3) - .5 * u(0, 0) * v.dotProduct(v, v));	//pressure
-    double c = sqrt(y * P / u(0, 0));									//speed of sound
-    double vn = v.dotProduct(v, n);													//normal velocity
-    double s = fabs(vn) + c;												//wave speed
+    v(0, 1) = v(0, 1) / u(0, 0);
+
+    //pressure
+    double P = (y - 1) * (u(0, 3) - .5 * u(0, 0) * v.dotProduct(v, v));
+
+    //speed of sound
+    double c = sqrt(y * P / u(0, 0));
+
+    //normal velocity
+    double vn = v.dotProduct(v, n);
+
+    //wave speed
+    double s = fabs(vn) + c;
     return s;
 }
 
 
 Matrix flux(Matrix& uL, Matrix& uR, Matrix& n, int R) {
 
+    //velocities
+    Matrix vL = uL.getBlock(0, 1, 1, 2);
+    Matrix vR = uR.getBlock(0, 1, 1, 2);
+    Matrix vdiff = vR - vL;
+
     //Left state
     double rhoL = uL(0, 0);
     double rhoEL = uL(0, 3);
-    Matrix vL = uL.getBlock(0, 1, 1, 2);
     vL(0, 0) = vL(0, 0) / rhoL;
     vL(0, 1) = vL(0, 1) / rhoL;
-    double PL = (y - 1) * (rhoEL - .5 * rhoL * vL.dotProduct(vL, vL));
+    double halfvLdotvL = .5 * vL.dotProduct(vL, vL);
+    double PL = (y - 1) * (rhoEL - rhoL * halfvLdotvL);
     double HL = (rhoEL + PL) / rhoL;
-    double cL = (y - 1) * (HL - .5 * vL.dotProduct(vL, vL));
+    double cL = (y - 1) * (HL - halfvLdotvL);
     double sL = abs(vL.dotProduct(vL, n)) + cL;
 
     //Right state
     double rhoR = uR(0, 0);
     double rhoER = uR(0, 3);
-    Matrix vR = uR.getBlock(0, 1, 1, 2);
     vR(0, 0) = vR(0, 0) / rhoR;
     vR(0, 1) = vR(0, 1) / rhoR;
-    double PR = (y - 1) * (rhoER - .5 * rhoR * vR.dotProduct(vR, vR));
+    double halfvRdotvR = .5 * vR.dotProduct(vR, vR);
+    double PR = (y - 1) * (rhoER - rhoR * halfvRdotvR);
     double HR = (rhoER + PR) / rhoR;
-    double cR = (y - 1) * (HR - .5 * vR.dotProduct(vR, vR));
+    double cR = (y - 1) * (HR - halfvRdotvR);
     double sR = abs(vR.dotProduct(vR, n)) + cR;
 
     //numerical flux calculation
     Matrix nT = n.transpose();
-    Matrix FuL = F(uL);
-    Matrix FuR = F(uR);
-    Matrix FuLdn = FuL * nT;
-    Matrix FuRdn = FuR * nT;
+    Matrix FuLdn = F(uL) * nT;
+    Matrix FuRdn = F(uR) * nT;
 
     switch (R) {
     case 1:
@@ -153,47 +162,46 @@ Matrix flux(Matrix& uL, Matrix& uR, Matrix& n, int R) {
         //Roe
 
         //Roe-averaged state
-        Matrix v(1, 2);
-        v = (vL * sqrt(rhoL) + vR * sqrt(rhoR)) / (sqrt(rhoL) + sqrt(rhoR));
-        double H = (sqrt(rhoL) * HL + sqrt(rhoR) * HR) / (sqrt(rhoL) + sqrt(rhoR));
+        //Matrix v(1, 2);
+        double sqrt_rhoL = sqrt(rhoL);
+        double sqrt_rhoR = sqrt(rhoR);
+        double denom = 1 / (sqrt_rhoL + sqrt_rhoR);
+
+
+        Matrix v = (vL * sqrt_rhoL + vR * sqrt_rhoR) * denom;
+        double H = (sqrt_rhoL * HL + sqrt_rhoR * HR) * denom;
         double u = v.dotProduct(v, n);
         double q2 = v.dotProduct(v, v);
         double c = (y - 1) * (H - .5 * q2);
 
         //eigenvalues
-        Matrix lambda(4, 1);
-        lambda(0, 0) = u + c;
-        lambda(1, 0) = u - c;
-        lambda(2, 0) = u;
-        lambda(3, 0) = u;
+        double lambda[3] = { abs(u + c), abs(u - c), u };
 
         double e = 0.1 * c;
-        for (int i = 0; i < 4; ++i) {
-            if (abs(lambda(i, 0)) < e)
-                lambda(i, 0) = (pow(e, 2) + pow(lambda(i, 0), 2)) / (2 * e);
+        for (int i = 0; i < 3; ++i) {
+            if (lambda[i] < e)
+                lambda[i] = abs((e * e + lambda[i] * lambda[i]) / (2 * e));
         }
 
         //subcalcs for A matrix
-        double s1 = .5 * (abs(lambda(0, 0)) + abs(lambda(1, 0)));
-        double s2 = .5 * (abs(lambda(0, 0)) - abs(lambda(1, 0)));
+        double s1 = .5 * (lambda[0] + lambda[1]) - lambda[2];
+        double s2 = .5 * (lambda[0] - lambda[1]);
 
-        double G1 = (y - 1) * (q2 / 2 * (rhoR - rhoL) - v.dotProduct(v, (vR * rhoR - vL * rhoL)) + (rhoER - rhoEL));
-        double G2 = -u * (rhoR - rhoL) + n.dotProduct(n, (vR * rhoR - vL * rhoL));
+        double G1 = ((y - 1) * (q2 / 2 * (rhoR - rhoL) - v.dotProduct(v, vdiff) + (rhoER - rhoEL))) / c;
+        double G2 = -u * (rhoR - rhoL) + n.dotProduct(n, vdiff);
 
-        double C1 = G1 * pow(c, -2) * (s1 - abs(lambda(2, 0))) + G2 / c * s2;
-        double C2 = G1 / c * s2 + (s1 - abs(lambda(2, 0))) * G2;
+        double C1 = (G1 * s1 + G2 * s2) / c;
+        double C2 = G1 * s2 + s1 * G2;
 
         //upwinding
         Matrix A(4, 1);
-        A(0, 0) = abs(lambda(2, 0)) * (rhoR - rhoL) + C1;
-        A(1, 0) = abs(lambda(2, 0)) * (rhoR * vR(0, 0) - rhoL * vL(0, 0)) + C1 * v(0, 0) + C2 * n(0, 0);
-        A(2, 0) = abs(lambda(2, 0)) * (rhoR * vR(0, 1) - rhoL * vL(0, 1)) + C1 * v(0, 1) + C2 * n(0, 1);
-        A(3, 0) = abs(lambda(2, 0)) * (rhoER - rhoEL) + C1 * H + C2 * u;
-
-        Matrix fRoe(4, 1);
+        A(0, 0) = lambda[2] * (rhoR - rhoL) + C1;
+        A(1, 0) = lambda[2] * (vdiff(0, 0)) + C1 * v(0, 0) + C2 * n(0, 0);
+        A(2, 0) = lambda[2] * (vdiff(0, 1)) + C1 * v(0, 1) + C2 * n(0, 1);
+        A(3, 0) = lambda[2] * (rhoER - rhoEL) + C1 * H + C2 * u;
 
 
-        fRoe = (FuLdn + FuRdn) * .5 - A * .5;
+        Matrix fRoe = (FuLdn + FuRdn - A) * .5;
         return fRoe;
         break;
     }
@@ -203,22 +211,25 @@ Matrix flux(Matrix& uL, Matrix& uR, Matrix& n, int R) {
 
 
 Matrix F(Matrix& u) {
+
     Matrix v = u.getBlock(0, 1, 1, 2);
     v(0, 0) = v(0, 0) / u(0, 0);
     v(0, 1) = v(0, 1) / u(0, 0);
+
+    double kinematicenergy = (y - 1) * (u(0, 3) - (0.5 * u(0, 0) * v.dotProduct(v, v)));
+
     Matrix f(4, 2);
     f(0, 0) = u(0, 1);
     f(0, 1) = u(0, 2);
 
-    f(1, 0) = u(0, 1) * u(0, 1) / u(0, 0) + (y - 1) * (u(0, 3) - .5 * u(0, 0) * v.dotProduct(v, v));
-    f(1, 1) = u(0, 1) * u(0, 2) / u(0, 0);
+    f(1, 0) = u(0, 1) * v(0, 0) + kinematicenergy;
+    f(1, 1) = u(0, 1) * v(0, 1);
 
-    f(2, 0) = u(0, 1) * u(0, 2) / u(0, 0);
-    f(2, 1) = u(0, 2) * u(0, 2) / u(0, 0) + (y - 1) * (u(0, 3) - .5 * u(0, 0) * v.dotProduct(v, v));
+    f(2, 0) = u(0, 2) * v(0, 0);
+    f(2, 1) = u(0, 2) * v(0, 1) + kinematicenergy;
 
-
-    f(3, 0) = u(0, 3) * u(0, 1) / u(0, 0) + u(0, 1) / u(0, 0) * (y - 1) * (u(0, 3) - .5 * u(0, 0) * v.dotProduct(v, v));
-    f(3, 1) = u(0, 3) * u(0, 2) / u(0, 0) + u(0, 2) / u(0, 0) * (y - 1) * (u(0, 3) - .5 * u(0, 0) * v.dotProduct(v, v));
+    f(3, 0) = u(0, 3) * v(0, 0) + v(0, 0) * kinematicenergy;
+    f(3, 1) = u(0, 3) * v(0, 1) + v(0, 1) * kinematicenergy;
 
 
     return f;
@@ -226,19 +237,41 @@ Matrix F(Matrix& u) {
 
 
 Matrix Outflow(Matrix& u, Matrix& n, double Pb) {
+
+
     //internal state quantities
+
+    //velocity
     Matrix v = u.getBlock(0, 1, 1, 2);
     v(0, 0) = v(0, 0) / u(0, 0);
-    v(0, 1) = v(0, 1) / u(0, 0);							//velocity
-    double P = (y - 1) * (u(0, 3) - .5 * u(0, 0) * v.dotProduct(v, v));	//pressure
-    double c = sqrt(y * P / u(0, 0));									//speed of sound
-    double S = P * pow(u(0, 0), -y);									//entropy
+    v(0, 1) = v(0, 1) / u(0, 0);
 
-    double pb = pow(Pb / S, 1 / y);						//boundary density
-    double cb = sqrt(y * Pb / pb);						//boundary speed of sound
-    double ubn = v.dotProduct(v, n) + 2 * (c - cb) / (y - 1);		//boundary normal component of velocity
-    Matrix vb = v - n * v.dotProduct(v, n) + n * ubn;				//boundary velocity
-    double pEb = Pb / (y - 1) + .5 * pb * vb.dotProduct(vb, vb);	//energy term
+    //pressure
+    double P = (y - 1) * (u(0, 3) - .5 * u(0, 0) * v.dotProduct(v, v));
+
+    //speed of sound
+    double c = sqrt(y * P / u(0, 0));
+
+    //entropy
+    double S = P / pow(u(0, 0), y);
+
+    //boundary state quantities
+
+    //density
+    double pb = pow(Pb / S, 1 / y);
+
+    //speed of sound
+    double cb = sqrt(y * Pb / pb);
+
+    //normal component of velocity
+    double ubn = v.dotProduct(v, n) + 2 * (c - cb) / (y - 1);
+
+    //velocity
+    Matrix vb = v - n * v.dotProduct(v, n) + n * ubn;
+
+    //energy term
+    double pEb = Pb / (y - 1) + .5 * pb * vb.dotProduct(vb, vb);
+
 
     //state construction
     Matrix ub(1, 4);
@@ -251,13 +284,24 @@ Matrix Outflow(Matrix& u, Matrix& n, double Pb) {
 
 
 Matrix Inflow(Matrix& u, Matrix& n, double Tt, double Pt, double a, double R) {
+
+
     //internal state quantities
+
+    //velocity
     Matrix v = u.getBlock(0, 1, 1, 2);
     v(0, 0) = v(0, 0) / u(0, 0);
-    v(0, 1) = v(0, 1) / u(0, 0);							//velocity
-    double P = (y - 1) * (u(0, 3) - .5 * u(0, 0) * v.dotProduct(v, v));	//pressure
-    double c = sqrt(y * P / u(0, 0));									//speed of sound
-    double J = v.dotProduct(v, n) + 2 * c / (y - 1);									//riemann invariant J+
+    v(0, 1) = v(0, 1) / u(0, 0);
+
+    //pressure
+    double P = (y - 1) * (u(0, 3) - .5 * u(0, 0) * v.dotProduct(v, v));
+
+    //speed of sound
+    double c = sqrt(y * P / u(0, 0));
+
+    //riemann invariant J+
+    double J = v.dotProduct(v, n) + 2 * c / (y - 1);
+
 
     //quantities for computing Mach #
     Matrix nin(1, 2);
@@ -265,7 +309,7 @@ Matrix Inflow(Matrix& u, Matrix& n, double Tt, double Pt, double a, double R) {
     nin(0, 1) = sin(a);
     double dn = nin.dotProduct(nin, n);
 
-    Matrix Mb = roots(y * R * Tt * dn * dn - (y - 1) / 2 * J * J, 4 * y * R * Tt * dn / (y - 1), 4 * y * R * Tt * pow(y - 1, -2) - J * J);
+    Matrix Mb = roots(y * R * Tt * dn * dn - (y - 1) / 2 * J * J, 4 * y * R * Tt * dn / (y - 1), 4 * y * R * Tt / (y - 1) / (y - 1) - J * J);
     double MB;
 
     //since it's quadratic, we need to grab appropriate number
@@ -303,19 +347,25 @@ Matrix Inflow(Matrix& u, Matrix& n, double Tt, double Pt, double a, double R) {
 
 
 Matrix wallFlux(Matrix& u, Matrix& n) {
+
+    //velocity
     Matrix v = u.getBlock(0, 1, 1, 2);
     v(0, 0) = v(0, 0) / u(0, 0);
-    v(0, 1) = v(0, 1) / u(0, 0);								//velocity
-    Matrix vb = v - n * v.dotProduct(v, n);							//velocity at boundary
-    double Pb = (y - 1) * (u(0, 3) - .5 * u(0, 0) * v.dotProduct(vb, vb));	//pressure at boundary
+    v(0, 1) = v(0, 1) / u(0, 0);
+
+    //velocity at boundary
+    Matrix vb = v - n * v.dotProduct(v, n);
+
+    //pressure at boundary
+    double Pb = (y - 1) * (u(0, 3) - .5 * u(0, 0) * v.dotProduct(vb, vb));
+
+    //flux
     Matrix f(1, 4);
     f(0, 0) = 0;
     f(0, 1) = Pb * n(0, 0);
     f(0, 2) = Pb * n(0, 1);
-    f(0, 3) = 0;					//flux
-    //f.print();
+    f(0, 3) = 0;
     return f;
-
 }
 
 
