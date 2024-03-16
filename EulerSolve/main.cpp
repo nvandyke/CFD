@@ -2,6 +2,7 @@
 #include "matrix.h"
 #include <iostream>
 #include <omp.h>
+#include <chrono>
 
 
 void FVrun() {
@@ -39,8 +40,12 @@ int main() {
     omp_set_num_threads(8);
     std::cout.precision(15);
     std::cout << std::fixed;
+
+    auto start_time = chrono::high_resolution_clock::now();
     FVrun();
-    
+    auto end_time = chrono::high_resolution_clock::now();
+    auto duration = chrono::duration_cast<chrono::seconds>(end_time - start_time);
+    std::cout << "took " << duration.count() << "s" << std::endl;
 
     std::cin.get();
     return 0;
