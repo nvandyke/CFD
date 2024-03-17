@@ -50,12 +50,12 @@ inline bool exists(const string& name) {
 
 
 int main(int argc, char *argv[]) {
-    omp_set_num_threads(8);
     std::cout.precision(15);
     std::cout << std::fixed;
     string initialfile = "";
     string meshfile = "meshes\\bump0.gri";
     int order = 1;
+    int cores = 1;
 
     while ((++argv)[0]) {
         if (argv[0][0] == '-') {
@@ -78,12 +78,17 @@ int main(int argc, char *argv[]) {
                 order = atoi((++argv)[0]);
                 std::cout << "order: " << order << endl;
                 break;
+            case 'c':
+                cores = atoi((++argv)[0]);
+                std::cout << "cores: " << cores << endl;
+                break;
             case 'h':
             default:
                 cout << "options are:" << endl;
                 cout << "\t-i: input file" << endl;
                 cout << "\t-m: mesh file" << endl;
                 cout << "\t-o: order" << endl;
+                cout << "\t-c: num cores" << endl;
                 cout << "\t-h: help menu" << endl;
                 return 1;
                 break;
@@ -92,6 +97,7 @@ int main(int argc, char *argv[]) {
 
     }
 
+    omp_set_num_threads(cores);
     auto start_time = chrono::high_resolution_clock::now();
     FVrun(initialfile,meshfile, order);
     auto end_time = chrono::high_resolution_clock::now();

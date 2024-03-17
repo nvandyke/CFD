@@ -52,41 +52,38 @@ Matrix FV_solve(FVstate& u, FVmesh m, FVConditions c) {
     return retVal;
 }
 
-Matrix residual(FVstate u, FVmesh m, FVConditions c, Matrix& dt, double CFL) {
-    //initialize
-    Matrix R(u.u.rows(), u.u.cols());
-    Matrix sl(u.u.rows(), 1);
+void interioredges(FVstate u, FVmesh m, double* R, double* sl) {
 
 
     Matrix gradux_l = Matrix(1, 4);
     Matrix graduy_l = Matrix(1, 4);
     Matrix gradux_r = Matrix(1, 4);
     Matrix graduy_r = Matrix(1, 4);
-    Matrix gradux_i = Matrix(1, 4);
-    Matrix graduy_i = Matrix(1, 4);
-    Matrix uL       = Matrix(1, 4);
-    Matrix uR       = Matrix(1, 4);
-    Matrix ui       = Matrix(1, 4);
-    Matrix uout     = Matrix(1, 4);
-    Matrix block    = Matrix(1, 4);
-    Matrix R_l      = Matrix(1, 4);
-    Matrix R_r      = Matrix(1, 4);
-    Matrix f        = Matrix(4, 1);
-    Matrix n        = Matrix(1, 2);
-    Matrix uin      = Matrix(1, 2);
+    Matrix uL = Matrix(1, 4);
+    Matrix uR = Matrix(1, 4);
+    Matrix R_l = Matrix(1, 4);
+    Matrix R_r = Matrix(1, 4);
+    Matrix f = Matrix(4, 1);
+    Matrix fTl = Matrix(4, 1);
+    Matrix n = Matrix(1, 2);
     int i, j, k;
-    double l;
+    double l, ws;
 
-    //gradient for second order
-    if (u.Order == 2)
-        gradient(u, m);
 
-    //internal edges
-//#pragma omp parallel
+
+#pragma omp parallel
     {
-//#pragma omp for reduction(+:R,sl)
+#pragma omp for private(j,k,uL,uR,gradux_l,graduy_l,gradux_r,graduy_r,n,l,f,ws,fTl)
         for (i = 0; i < m.I2E.rows(); ++i) {
-
+            /*
+            int a = i;
+            double b = i - .01;
+            int j = int(m.I2E(i, 0));
+            Matrix uL = u.u.getBlock(j, 0, 1, 4);
+            cout << uL << endl;
+            R[i] += a;
+            printf("%d\n", a);
+            */
 
             j = int(m.I2E(i, 0));
             k = int(m.I2E(i, 2));
@@ -119,102 +116,177 @@ Matrix residual(FVstate u, FVmesh m, FVConditions c, Matrix& dt, double CFL) {
             l = m.Il(i, 0);
             f = flux(uL, uR, n, 0);
             //f.print();
-            double ws = max(waveSpeed(uL, n), waveSpeed(uR, n));
+            ws = max(waveSpeed(uL, n), waveSpeed(uR, n));
 
-            R_l = R.getBlock(j, 0, 1, 4) + (f.transpose() * l);
-            R_r = R.getBlock(k, 0, 1, 4) - (f.transpose() * l);
+            fTl = f.transpose() * l;
+            //Matrix R_l = R.getBlock(j, 0, 1, 4) + (f.transpose() * l);
+            //Matrix R_r = R.getBlock(k, 0, 1, 4) - (f.transpose() * l);
+#pragma omp critical 
+            {
+                R[u.u.cols() * j + 0] += fTl(0, 0);
+                R[u.u.cols() * j + 1] += fTl(0, 1);
+                R[u.u.cols() * j + 2] += fTl(0, 2);
+                R[u.u.cols() * j + 3] += fTl(0, 3);
 
-            R.setBlock(j, 0, R_l);
-            R.setBlock(k, 0, R_r);
+                R[u.u.cols() * k + 0] -= fTl(0, 0);
+                R[u.u.cols() * k + 1] -= fTl(0, 1);
+                R[u.u.cols() * k + 2] -= fTl(0, 2);
+                R[u.u.cols() * k + 3] -= fTl(0, 3);
 
-            //vec d = R.getBlock(j, 0, 1, 4);
-            //d.print();
+                //R.setBlock(j, 0, R_l);
+                //R.setBlock(k, 0, R_r);
 
-            sl(j, 0) = sl(j, 0) + ws * l;
-            sl(k, 0) = sl(k, 0) + ws * l;
+                //vec d = R.getBlock(j, 0, 1, 4);
+                //d.print();
 
+                sl[j] += ws * l;
+                sl[k] += ws * l;
+            }
         }
     }
-    //R.print();
+}
+
+void boundaryedges(FVstate u, FVmesh m, FVConditions c, double* R, double* sl) {
+
+
+    Matrix gradux_i = Matrix(1, 4);
+    Matrix graduy_i = Matrix(1, 4);
+    Matrix ui = Matrix(1, 4);
+    Matrix uout = Matrix(1, 4);
+    Matrix block = Matrix(1, 4);
+    Matrix f = Matrix(4, 1);
+    Matrix n = Matrix(1, 2);
+    Matrix uin = Matrix(1, 4);
+    int i, j;
+    double l, ws;
+
+#pragma omp parallel
+    {
+#pragma omp for private(j,ui,gradux_i,graduy_i,n,l,uout,uin,block,ws)
+        for (i = 0; i < m.B2E.rows(); ++i) {
+            j = int(m.B2E(i, 0));
+            ui = u.u.getBlock(j, 0, 1, 4);
+            if (u.Order == 2) {
+                gradux_i = u.gradux.getBlock(j, 0, 1, 4);
+                graduy_i = u.graduy.getBlock(j, 0, 1, 4);
+                ui += (gradux_i * (m.Br(i, 0) - m.C(j, 0)) + graduy_i * (m.Br(i, 1) - m.C(j, 1)));
+            }
+            n = m.Bn.getBlock(i, 0, 1, 2);
+
+            l = m.Bl(i, 0);
+            //uout(1, 4);
+            //uin(1, 4);
+
+            //block(1, 4);
+            switch ((int)m.B2E(i, 2)) {
+            case 1:
+            case 3:
+                //Inviscid Wall
+                //cout << j << endl;
+                //block.print();
+                block = wallFlux(ui, n) * l;
+                //R.setBlock(j, 0, block);
+                //sl(j, 0) = sl(j, 0) + fabs(waveSpeed(ui, n)) * l;
+                ws = fabs(waveSpeed(ui, n)) * l;
+                //cout << endl << "wall" << endl;
+                //R.print();
+                break;
+
+            case 2:
+                //Subsonic Outlet
+                uout = Outflow(ui, n, c.Pinf);
+                block = (F(uout) * (n.transpose())).transpose() * l;
+                //R.setBlock(j, 0, block);
+                //sl(j, 0) = sl(j, 0) + fabs(waveSpeed(uout, n)) * l;
+                ws = fabs(waveSpeed(uout, n)) * l;
+                //cout << endl << "out" << endl;
+                //R.print();
+                break;
+
+            case 4:
+                //Subsonic Inlet
+                //cout << j << endl;
+                uin = Inflow(ui, n, c.Tt, c.Pt, c.a, c.R);
+                block = (F(uin) * (n.transpose())).transpose() * l;
+                //R.setBlock(j, 0, block);
+                //sl(j, 0) = sl(j, 0) + fabs(waveSpeed(uin, n)) * l;
+                ws = fabs(waveSpeed(uin, n)) * l;
+                //cout << endl << "in" << endl;
+                //R.print();
+                break;
+
+            case 5:
+                //Supersonic Inlet
+                //block.print();
+                //cout << j << endl;
+                block = flux(ui, c.uinf, n, 0).transpose() * l;
+                //R.setBlock(j, 0, block);
+                //sl(j, 0) = sl(j, 0) + fabs(max(waveSpeed(ui, n), waveSpeed(c.uinf, n))) * l;
+                ws = fabs(max(waveSpeed(ui, n), waveSpeed(c.uinf, n))) * l;
+                break;
+
+            case 6:
+                //Supersonic Outlet
+                //block.print();
+                //cout << j << endl;
+                block = (F(ui) * (n.transpose())).transpose() * l;
+                //R.setBlock(j, 0, block);
+                //sl(j, 0) = sl(j, 0) + fabs(waveSpeed(ui, n)) * l;
+                ws = fabs(waveSpeed(ui, n)) * l;
+                break;
+
+            default:
+                //Freestream Test
+                block = flux(ui, c.uinf, n, 0).transpose() * l;
+                //R.setBlock(j, 0, block);
+                //sl(j, 0) = sl(j, 0) + fabs(max(waveSpeed(ui, n), waveSpeed(c.uinf, n))) * l;
+                ws = fabs(max(waveSpeed(ui, n), waveSpeed(c.uinf, n))) * l;
+                break;
+
+
+            }
+            //cout << block << endl;
+#pragma omp critical 
+            {
+                R[j * u.u.cols() + 0] += block(0, 0);
+                R[j * u.u.cols() + 1] += block(0, 1);
+                R[j * u.u.cols() + 2] += block(0, 2);
+                R[j * u.u.cols() + 3] += block(0, 3);
+
+                sl[j] += ws;
+            }
+        }
+    }
+
+}
+
+
+Matrix residual(FVstate u, FVmesh m, FVConditions c, Matrix& dt, double CFL) {
+    //initialize
+
+    double* Rval = new double[u.u.rows() * u.u.cols()];
+    double* slval = new double[u.u.rows()];
+    int i, j;
+
+    for (i = 0; i < u.u.rows(); ++i) {
+        slval[i] = 0;
+        for (j = 0; j < u.u.cols(); ++j) {
+            Rval[i * u.u.cols() + j] = 0;
+        }
+    }
+    //gradient for second order
+    if (u.Order == 2)
+        gradient(u, m);
+
+    //internal edges
+    interioredges(u, m, Rval, slval);
 
     //boundary edges
-    for (i = 0; i < m.B2E.rows(); ++i) {
-        j = int(m.B2E(i, 0));
-        ui = u.u.getBlock(j, 0, 1, 4);
-        if (u.Order == 2) {
-            gradux_i = u.gradux.getBlock(j, 0, 1, 4);
-            graduy_i = u.graduy.getBlock(j, 0, 1, 4);
-            ui += (gradux_i * (m.Br(i, 0) - m.C(j, 0)) + graduy_i * (m.Br(i, 1) - m.C(j, 1)));
-        }
-        n = m.Bn.getBlock(i, 0, 1, 2);
+    boundaryedges(u, m, c, Rval, slval);
 
-        l = m.Bl(i, 0);
-        uout(1, 4);
-        uin(1, 4);
+    Matrix R(Rval, u.u.rows(), u.u.cols());
+    Matrix sl(slval, u.u.rows(), 1);
 
-        block = R.getBlock(j, 0, 1, 4);
-        switch ((int)m.B2E(i, 2)) {
-        case 1:
-        case 3:
-            //Inviscid Wall
-            //cout << j << endl;
-            //block.print();
-            block += wallFlux(ui, n) * l;
-            R.setBlock(j, 0, block);
-            sl(j, 0) = sl(j, 0) + fabs(waveSpeed(ui, n)) * l;
-            //cout << endl << "wall" << endl;
-            //R.print();
-            break;
-
-        case 2:
-            //Subsonic Outlet
-            uout = Outflow(ui, n, c.Pinf);
-            block += (F(uout) * (n.transpose())).transpose() * l;
-            R.setBlock(j, 0, block);
-            sl(j, 0) = sl(j, 0) + fabs(waveSpeed(uout, n)) * l;
-            //cout << endl << "out" << endl;
-            //R.print();
-            break;
-
-        case 4:
-            //Subsonic Inlet
-            //cout << j << endl;
-            uin = Inflow(ui, n, c.Tt, c.Pt, c.a, c.R);
-            block += (F(uin) * (n.transpose())).transpose() * l;
-            R.setBlock(j, 0, block);
-            sl(j, 0) = sl(j, 0) + fabs(waveSpeed(uin, n)) * l;
-            //cout << endl << "in" << endl;
-            //R.print();
-            break;
-
-        case 5:
-            //Supersonic Inlet
-            //block.print();
-            //cout << j << endl;
-            block += flux(ui, c.uinf, n, 0).transpose() * l;
-            R.setBlock(j, 0, block);
-            sl(j, 0) = sl(j, 0) + fabs(max(waveSpeed(ui, n), waveSpeed(c.uinf, n))) * l;
-            break;
-
-        case 6:
-            //Supersonic Outlet
-            //block.print();
-            //cout << j << endl;
-            block += (F(ui) * (n.transpose())).transpose() * l;
-            R.setBlock(j, 0, block);
-            sl(j, 0) = sl(j, 0) + fabs(waveSpeed(ui, n)) * l;
-            break;
-
-        default:
-            //Freestream Test
-            block += flux(ui, c.uinf, n, 0).transpose() * l;
-            R.setBlock(j, 0, block);
-            sl(j, 0) = sl(j, 0) + fabs(max(waveSpeed(ui, n), waveSpeed(c.uinf, n))) * l;
-            break;
-
-        }
-    }
-    //R.print();
     //set time step
     dt = Matrix(sl.rows(), 4);
     for (i = 0; i < sl.rows(); ++i) {
@@ -250,7 +322,7 @@ void gradient(FVstate& u, FVmesh& m) {
         //Matrix uL = u.u.getBlock(j, 0, 1, 4);
         //Matrix uR = u.u.getBlock(k, 0, 1, 4);
         stateAdd = u.u.getBlock(j, 0, 1, 4) + u.u.getBlock(k, 0, 1, 4);
-        
+
         n = m.In.getBlock(i, 0, 1, 2) * (m.Il(i, 0) / 2);
         //double l = m.Il(i, 0);
 

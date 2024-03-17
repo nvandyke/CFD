@@ -47,6 +47,9 @@ Matrix roots(double a, double b, double c) {
 
     double discriminant = b * b - 4 * a * c;
     Matrix ans(2, 1);
+    if (discriminant < 0) {
+        cout << "what" << endl;
+    }
     assert(discriminant >= 0);
     double discriminant_sqrt = sqrt(discriminant);
     ans(0, 0) = (-b + discriminant_sqrt) / (2 * a);
@@ -454,6 +457,7 @@ FVmesh::FVmesh(string filename) {
 
     B2E = Matrix(totalBFace, 3);
     for (int i = 0; i < NB; i++) {
+        //swap for freestream test
         Matrix B2Ei = boundaryConnectivity(E, B[i], i + 1);
         //Matrix B2Ei = boundaryConnectivity(E, B[i], 7);
         B2E.setBlock(b2erow, 0, B2Ei);

@@ -31,6 +31,15 @@ Matrix::Matrix(double** a, int rows, int cols): rows_(rows), cols_(cols) {
     }
 }
 
+Matrix::Matrix(double* a, int rows, int cols): rows_(rows), cols_(cols) {
+    allocSpace();
+    for (int i = 0; i < rows_; ++i) {
+        for (int j = 0; j < cols_; ++j) {
+            p[i][j] = a[i * cols + j];
+        }
+    }
+}
+
 Matrix::Matrix(): rows_(1), cols_(1) {
     allocSpace();
     p[0][0] = 0;
