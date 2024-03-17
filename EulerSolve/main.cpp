@@ -6,12 +6,12 @@
 #include <string>
 
 
-void FVrun(string ic, string mesh) {
+void FVrun(string ic, string mesh, int order) {
     //string filename = "mesh.txt";
     FVmesh m(mesh);
     double Mach = 0.5;
     double angleOfAttack = 0.0;
-    int order = 1;
+    //int order = 1;
 
     FVConditions c(Mach, angleOfAttack);
     FVstate u(order, m, c);
@@ -55,6 +55,7 @@ int main(int argc, char *argv[]) {
     std::cout << std::fixed;
     string initialfile = "";
     string meshfile = "meshes\\bump0.gri";
+    int order = 1;
 
     while ((++argv)[0]) {
         if (argv[0][0] == '-') {
@@ -73,11 +74,16 @@ int main(int argc, char *argv[]) {
                     std::cout << "mesh file: " << meshfile << endl;
                 }
                 break;
+            case 'o':
+                order = atoi((++argv)[0]);
+                std::cout << "order: " << order << endl;
+                break;
             case 'h':
             default:
                 cout << "options are:" << endl;
                 cout << "\t-i: input file" << endl;
                 cout << "\t-m: mesh file" << endl;
+                cout << "\t-o: order" << endl;
                 cout << "\t-h: help menu" << endl;
                 return 1;
                 break;
@@ -87,7 +93,7 @@ int main(int argc, char *argv[]) {
     }
 
     auto start_time = chrono::high_resolution_clock::now();
-    FVrun(initialfile,meshfile);
+    FVrun(initialfile,meshfile, order);
     auto end_time = chrono::high_resolution_clock::now();
     auto duration = chrono::duration_cast<chrono::seconds>(end_time - start_time);
     std::cout << "took " << duration.count() << "s" << std::endl;
