@@ -5,6 +5,7 @@ Matrix FV_solve(FVstate& u, FVmesh m, FVConditions c) {
     //constants
     double CFL = 0.5;
     double tol = 1e-7;
+    double max = 1 / tol;
     int MaxIter = 100000;
 
     //initialize
@@ -23,7 +24,7 @@ Matrix FV_solve(FVstate& u, FVmesh m, FVConditions c) {
             cout << e(iter, 0) << endl;
             if (e(iter, 0) < tol)
                 break;
-            if (e(iter, 0) > 1e10 || isnan(e(iter, 0)))
+            if (e(iter, 0) > max || isnan(e(iter, 0)))
                 break;
             if (iter % 1000 == 0)
                 printResults(u.u, e);
@@ -42,8 +43,10 @@ Matrix FV_solve(FVstate& u, FVmesh m, FVConditions c) {
             cout << e(iter, 0) << endl;
             if (e(iter, 0) < tol)
                 break;
-            if (e(iter, 0) > 1e10 || isnan(e(iter, 0)))
+            if (e(iter, 0) > max || isnan(e(iter, 0)))
                 break;
+            if (iter % 1000 == 0)
+                printResults(u.u, e);
         }
     }
     cout << "Stopped at iteration " << iter << endl;
@@ -172,74 +175,45 @@ void boundaryedges(FVstate u, FVmesh m, FVConditions c, double* R, double* sl) {
                 ui += (gradux_i * (m.Br(i, 0) - m.C(j, 0)) + graduy_i * (m.Br(i, 1) - m.C(j, 1)));
             }
             n = m.Bn.getBlock(i, 0, 1, 2);
-
             l = m.Bl(i, 0);
-            //uout(1, 4);
-            //uin(1, 4);
 
-            //block(1, 4);
             switch ((int)m.B2E(i, 2)) {
             case 1:
             case 3:
                 //Inviscid Wall
-                //cout << j << endl;
-                //block.print();
                 block = wallFlux(ui, n) * l;
-                //R.setBlock(j, 0, block);
-                //sl(j, 0) = sl(j, 0) + fabs(waveSpeed(ui, n)) * l;
                 ws = fabs(waveSpeed(ui, n)) * l;
-                //cout << endl << "wall" << endl;
-                //R.print();
                 break;
 
             case 2:
                 //Subsonic Outlet
                 uout = Outflow(ui, n, c.Pinf);
                 block = (F(uout) * (n.transpose())).transpose() * l;
-                //R.setBlock(j, 0, block);
-                //sl(j, 0) = sl(j, 0) + fabs(waveSpeed(uout, n)) * l;
                 ws = fabs(waveSpeed(uout, n)) * l;
-                //cout << endl << "out" << endl;
-                //R.print();
                 break;
 
             case 4:
                 //Subsonic Inlet
-                //cout << j << endl;
                 uin = Inflow(ui, n, c.Tt, c.Pt, c.a, c.R);
                 block = (F(uin) * (n.transpose())).transpose() * l;
-                //R.setBlock(j, 0, block);
-                //sl(j, 0) = sl(j, 0) + fabs(waveSpeed(uin, n)) * l;
                 ws = fabs(waveSpeed(uin, n)) * l;
-                //cout << endl << "in" << endl;
-                //R.print();
                 break;
 
             case 5:
                 //Supersonic Inlet
-                //block.print();
-                //cout << j << endl;
                 block = flux(ui, c.uinf, n, 0).transpose() * l;
-                //R.setBlock(j, 0, block);
-                //sl(j, 0) = sl(j, 0) + fabs(max(waveSpeed(ui, n), waveSpeed(c.uinf, n))) * l;
                 ws = fabs(max(waveSpeed(ui, n), waveSpeed(c.uinf, n))) * l;
                 break;
 
             case 6:
                 //Supersonic Outlet
-                //block.print();
-                //cout << j << endl;
                 block = (F(ui) * (n.transpose())).transpose() * l;
-                //R.setBlock(j, 0, block);
-                //sl(j, 0) = sl(j, 0) + fabs(waveSpeed(ui, n)) * l;
                 ws = fabs(waveSpeed(ui, n)) * l;
                 break;
 
             default:
                 //Freestream Test
                 block = flux(ui, c.uinf, n, 0).transpose() * l;
-                //R.setBlock(j, 0, block);
-                //sl(j, 0) = sl(j, 0) + fabs(max(waveSpeed(ui, n), waveSpeed(c.uinf, n))) * l;
                 ws = fabs(max(waveSpeed(ui, n), waveSpeed(c.uinf, n))) * l;
                 break;
 
@@ -285,12 +259,12 @@ Matrix residual(FVstate u, FVmesh m, FVConditions c, Matrix& dt, double CFL) {
     boundaryedges(u, m, c, Rval, slval);
 
     Matrix R(Rval, u.u.rows(), u.u.cols());
-    Matrix sl(slval, u.u.rows(), 1);
+    //Matrix sl(slval, u.u.rows(), 1);
 
     //set time step
-    dt = Matrix(sl.rows(), 4);
-    for (i = 0; i < sl.rows(); ++i) {
-        dt(i, 0) = 2 * CFL / sl(i, 0);
+    dt = Matrix(u.u.rows(), 4);
+    for (i = 0; i < dt.rows(); ++i) {
+        dt(i, 0) = 2 * CFL / sl[i];
         for (j = 1; j < dt.cols(); ++j) {
             dt(i, j) = dt(i, 0);
 
