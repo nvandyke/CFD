@@ -21,7 +21,10 @@ def readerror(filename):
         lines = f.readlines()
     vals = []
     for line in lines:
-        line = float(line.strip())
+        line = line.strip()
+        if line == '':
+            break
+        line = float(line)
         if not line:
             break
         vals.append(line)
@@ -64,7 +67,7 @@ def ploterror(error):
 
 resultfile = 'u.txt'
 errorfile = 'e.txt'
-meshfile = 'meshes\\bump5.gri'
+meshfile = 'meshes\\bump3.gri'
 
 mesh = readgri(meshfile)
 result = readresult(resultfile)
@@ -80,7 +83,7 @@ Mach = speed/c
 
 #print(mesh)
 #print(result)
-plotPDE(mesh,Mach)
 ploterror(error)
+plotPDE(mesh,Mach)
 plt.show()
 
