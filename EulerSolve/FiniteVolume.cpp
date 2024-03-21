@@ -50,6 +50,34 @@ Matrix FV_solve(FVstate& u, FVmesh m, FVConditions c) {
             if (iter % 1000 == 0)
                 printResults(u.u, e);
         }
+    } else if (u.Order < 5) {
+
+        FVstate ufe(2, m, c);
+        Matrix dtdummy(u.u.rows(), u.u.cols());
+        Matrix R2(u.u.rows(), u.u.cols());
+        Matrix R3(u.u.rows(), u.u.cols());
+        Matrix R4(u.u.rows(), u.u.cols());
+        Matrix bigR(u.u.rows(), u.u.cols());
+
+        for (iter = 0; iter < MaxIter; ++iter) {
+            R = residual(u, m, c, dt);
+            ufe.u = u.u - .5 * (dt % R);
+            R2 = residual(ufe, m, c, dtdummy);
+            ufe.u = u.u - .5 * (dt % R2);
+            R3 = residual(ufe, m, c, dtdummy);
+            ufe.u = u.u - dt % R3;
+            R4 = residual(ufe, m, c, dtdummy);
+            bigR = R + 2 * (R2 + R3) + R4;
+            u.u = u.u - (dt % bigR) / 6;
+            e(iter, 0) = R.max();
+            cout << e(iter, 0) << endl;
+            if (e(iter, 0) < tol)
+                break;
+            if (e(iter, 0) > max || isnan(e(iter, 0)))
+                break;
+            if (iter % 1000 == 0)
+                printResults(u.u, e);
+        }
     }
     cout << "Stopped at iteration " << iter << endl;
     Matrix retVal(int(iter) + 1, 1);
