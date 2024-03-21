@@ -243,12 +243,17 @@ Matrix residual(FVstate& u, FVmesh& m, FVConditions& c, Matrix& dt) {
     double* sl = new double[u.u.rows()];
     int i, j;
 
-    for (i = 0; i < u.u.rows(); ++i) {
-        sl[i] = 0;
-        for (j = 0; j < u.u.cols(); ++j) {
-            Rval[i * u.u.cols() + j] = 0;
+#pragma omp parallel
+    {
+#pragma omp for
+        for (i = 0; i < u.u.rows(); ++i) {
+            sl[i] = 0;
+            for (j = 0; j < u.u.cols(); ++j) {
+                Rval[i * u.u.cols() + j] = 0;
+            }
         }
     }
+
     //gradient for second order
     if (u.Order == 2)
         gradient(u, m);
@@ -272,6 +277,8 @@ Matrix residual(FVstate& u, FVmesh& m, FVConditions& c, Matrix& dt) {
         }
     }
     //dt.print();
+    delete[] Rval;
+    delete[] sl;
     return R;
 }
 
