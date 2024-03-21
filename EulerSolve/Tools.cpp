@@ -471,18 +471,18 @@ FVmesh::FVmesh(string filename) {
     Ir = Matrix(I2E.rows(), 2);
 
     for (int i = 0; i < I2E.rows(); i++) {
-        Matrix norm = normal(I2E(i, 0), I2E(i, 1));
+        Matrix norm = normal(int(I2E(i, 0)), int(I2E(i, 1)));
         In.setBlock(i, 0, norm);
-        Il(i, 0) = length(I2E(i, 0), I2E(i, 1));
-        Matrix midp = midpoint(I2E(i, 0), I2E(i, 1));
+        Il(i, 0) = length(int(I2E(i, 0)), int(I2E(i, 1)));
+        Matrix midp = midpoint(int(I2E(i, 0)), int(I2E(i, 1)));
         Ir.setBlock(i, 0, midp);
 
 
-        Matrix temp1 = C.getBlock(I2E(i, 0), 0, 1, 2) + Ir.getBlock(i, 0, 1, 2);
-        Matrix temp3 = C.getBlock(I2E(i, 2), 0, 1, 2) + Ir.getBlock(i, 0, 1, 2);
+        Matrix temp1 = C.getBlock(int(I2E(i, 0)), 0, 1, 2) + Ir.getBlock(i, 0, 1, 2);
+        Matrix temp3 = C.getBlock(int(I2E(i, 2)), 0, 1, 2) + Ir.getBlock(i, 0, 1, 2);
 
-        C.setBlock(I2E(i, 0), 0, temp1);
-        C.setBlock(I2E(i, 2), 0, temp3);
+        C.setBlock(int(I2E(i, 0)), 0, temp1);
+        C.setBlock(int(I2E(i, 2)), 0, temp3);
     }
 
     Bn = Matrix(B2E.rows(), 2);
@@ -490,15 +490,15 @@ FVmesh::FVmesh(string filename) {
     Br = Matrix(B2E.rows(), 2);
 
     for (int i = 0; i < B2E.rows(); i++) {
-        Matrix norm = normal(B2E(i, 0), B2E(i, 1));
+        Matrix norm = normal(int(B2E(i, 0)), int(B2E(i, 1)));
         Bn.setBlock(i, 0, norm);
-        Bl(i, 0) = length(B2E(i, 0), B2E(i, 1));
-        Matrix midp = midpoint(B2E(i, 0), B2E(i, 1));
+        Bl(i, 0) = length(int(B2E(i, 0)), int(B2E(i, 1)));
+        Matrix midp = midpoint(int(B2E(i, 0)), int(B2E(i, 1)));
         Br.setBlock(i, 0, midp);
 
-        Matrix temp = C.getBlock(B2E(i, 0), 0, 1, 2) + Br.getBlock(i, 0, 1, 2);
+        Matrix temp = C.getBlock(int(B2E(i, 0)), 0, 1, 2) + Br.getBlock(i, 0, 1, 2);
 
-        C.setBlock(B2E(i, 0), 0, temp);
+        C.setBlock(int(B2E(i, 0)), 0, temp);
     }
 
     C /= 3;
@@ -722,16 +722,16 @@ Matrix FVmesh::pointsFromTE(int t, int e) {
     int n1, n2;
     switch (e) {
     case 0:
-        n1 = E(t, 1) - 1;
-        n2 = E(t, 2) - 1;
+        n1 = int(E(t, 1)) - 1;
+        n2 = int(E(t, 2)) - 1;
         break;
     case 1:
-        n1 = E(t, 2) - 1;
-        n2 = E(t, 0) - 1;
+        n1 = int(E(t, 2)) - 1;
+        n2 = int(E(t, 0)) - 1;
         break;
     case 2:
-        n1 = E(t, 0) - 1;
-        n2 = E(t, 1) - 1;
+        n1 = int(E(t, 0)) - 1;
+        n2 = int(E(t, 1)) - 1;
         break;
     default:
         cout << "poop" << endl;
@@ -743,8 +743,8 @@ Matrix FVmesh::pointsFromTE(int t, int e) {
     pts(0, 1) = V(n1, 1);
     pts(1, 0) = V(n2, 0);
     pts(1, 1) = V(n2, 1);
-    pts(2, 0) = V(E(t, e) - 1, 0);
-    pts(2, 1) = V(E(t, e) - 1, 1);
+    pts(2, 0) = V(int(E(t, e)) - 1, 0);
+    pts(2, 1) = V(int(E(t, e)) - 1, 1);
 
     return pts;
 
@@ -799,20 +799,20 @@ double FVmesh::verify() {
     Matrix tot(E.rows(), 1);
 
     for (int i = 0; i < I2E.rows(); i++) {
-        Matrix curSum1 = sum.getBlock(I2E(i, 0), 0, 1, 2);
+        Matrix curSum1 = sum.getBlock(int(I2E(i, 0)), 0, 1, 2);
         curSum1 += In.getBlock(i, 0, 1, 2) * Il(i, 0);
 
-        Matrix curSum2 = sum.getBlock(I2E(i, 2), 0, 1, 2);
+        Matrix curSum2 = sum.getBlock(int(I2E(i, 2)), 0, 1, 2);
         curSum2 -= In.getBlock(i, 0, 1, 2) * Il(i, 0);
 
-        sum.setBlock(I2E(i, 0), 0, curSum1);
-        sum.setBlock(I2E(i, 2), 0, curSum2);
+        sum.setBlock(int(I2E(i, 0)), 0, curSum1);
+        sum.setBlock(int(I2E(i, 2)), 0, curSum2);
     }
     for (int i = 0; i < B2E.rows(); i++) {
-        Matrix curSum = sum.getBlock(B2E(i, 0), 0, 1, 2);
+        Matrix curSum = sum.getBlock(int(B2E(i, 0)), 0, 1, 2);
         curSum += Bn.getBlock(i, 0, 1, 2) * Bl(i, 0);
 
-        sum.setBlock(B2E(i, 0), 0, curSum);
+        sum.setBlock(int(B2E(i, 0)), 0, curSum);
     }
     for (int i = 0; i < tot.rows(); i++) {
         tot(i, 0) = sqrt(sum(i, 0) * sum(i, 0) + sum(i, 1) * sum(i, 1));
