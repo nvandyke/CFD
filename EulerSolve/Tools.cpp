@@ -3,36 +3,14 @@
 #include <assert.h>
 
 void printResults(Matrix& u, Matrix& e) {
-    //sizes of data
-    int a, b, c;
-    a = u.rows();
-    b = u.cols();
-    c = e.rows();
-    Matrix v(u.rows(), u.cols());
-    Matrix w(u.rows(), u.cols());
-
 
     //output state
     ofstream output1;
     output1.open("u.txt");
-
     output1.precision(15);
     output1 << std::fixed;
     output1 << u << endl;
     output1.close();
-
-    /*ifstream input1;
-    input1.open("u.txt");
-    input1 >> v;
-    input1.close();
-
-
-    w = u - v;
-
-    std::cout << u << endl;
-    std::cout << v << endl;
-    std::cout << w << endl;*/
-
 
     //output residual history
     ofstream output2;
@@ -47,9 +25,6 @@ Matrix roots(double a, double b, double c) {
 
     double discriminant = b * b - 4 * a * c;
     Matrix ans(2, 1);
-    if (discriminant < 0) {
-        cout << "what" << endl;
-    }
     assert(discriminant >= 0);
     double discriminant_sqrt = sqrt(discriminant);
     ans(0, 0) = (-b + discriminant_sqrt) / (2 * a);
