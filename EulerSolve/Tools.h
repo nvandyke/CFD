@@ -91,7 +91,7 @@ public:
 //Finite Volume Methods
 Matrix FV_solve(FVstate& u, FVmesh m, FVConditions c);
 
-Matrix residual(FVstate u, FVmesh m, FVConditions c, Matrix& dt, double CFL);
+Matrix residual(FVstate& u, FVmesh& m, FVConditions& c, Matrix& dt);
 
 void gradient(FVstate& u, FVmesh& m);
 
