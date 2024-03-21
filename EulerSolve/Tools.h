@@ -7,6 +7,7 @@
 #include <iostream>
 #include <vector>
 #include "matrix.h"
+#include "block.h"
 
 using namespace std;
 const double y = 1.4;
@@ -46,8 +47,8 @@ public:
 
 class FVmesh {
 public:
-    Matrix I2E;
-    Matrix B2E;
+    Block I2E;
+    Block B2E;
     Matrix In;
     Matrix Bn;
     Matrix Il;
@@ -58,14 +59,14 @@ public:
     Matrix C;
 
     Matrix V;
-    Matrix E;
-    Matrix* B;
+    Block E;
+    Block* B;
     string* Bname;
 
     FVmesh(string filename);
-    Matrix connectivity(Matrix& E);
-    vector<int> edge2vertex(int t, int e, Matrix& E);
-    Matrix boundaryConnectivity(Matrix& E, Matrix& boundary, int bgroup);
+    Block connectivity(Block& E);
+    vector<int> edge2vertex(int t, int e, Block& E);
+    Block boundaryConnectivity(Block& E, Block& boundary, int bgroup);
     Matrix normal(int t, int e);
     double length(int t, int e);
     Matrix midpoint(int t, int e);

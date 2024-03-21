@@ -367,7 +367,8 @@ FVstate::FVstate(int O, FVmesh m, FVConditions c) {
 FVmesh::FVmesh(string filename) {
     ifstream input;
     input.open(filename);
-    double dummy;
+    double double_dummy;
+    int int_dummy;
     int Nn, Ne, dim;
 
     input >> Nn >> Ne >> dim;
@@ -375,8 +376,8 @@ FVmesh::FVmesh(string filename) {
     //read vertices
     for (int i = 0; i < Nn; ++i) {
         for (int j = 0; j < dim; ++j) {
-            input >> dummy;
-            V(i, j) = dummy;
+            input >> double_dummy;
+            V(i, j) = double_dummy;
         }
     }
 
@@ -387,7 +388,7 @@ FVmesh::FVmesh(string filename) {
     input >> NB;
 
     //allocate space to store the info, 
-    B = new Matrix[NB];
+    B = new Block[NB];
     Bname = new string[NB];
 
     int nBFace, nf, totalBFace = 0;
@@ -395,12 +396,12 @@ FVmesh::FVmesh(string filename) {
 
     for (int NBi = 0; NBi < NB; NBi++) {
         input >> nBFace >> nf >> Title;
-        B[NBi] = Matrix(nBFace, nf);
+        B[NBi] = Block(nBFace, nf);
         Bname[NBi] = Title;
         for (int j = 0; j < nBFace; ++j) {
             for (int k = 0; k < nf; ++k) {
-                input >> dummy;
-                B[NBi](j, k) = dummy;
+                input >> int_dummy;
+                B[NBi](j, k) = int_dummy;
             }
         }
         totalBFace += nBFace;
@@ -409,15 +410,15 @@ FVmesh::FVmesh(string filename) {
 
     int Ne0 = 0;
 
-    input >> dummy >> dummy >> Title;
+    input >> int_dummy >> int_dummy >> Title;
 
 
 
-    E = Matrix(Ne, dim + 1);
+    E = Block(Ne, dim + 1);
     for (int i = 0; i < Ne; ++i) {
         for (int j = 0; j < dim + 1; ++j) {
-            input >> dummy;
-            E(i, j) = dummy;
+            input >> int_dummy;
+            E(i, j) = int_dummy;
         }
     }
 
@@ -430,11 +431,11 @@ FVmesh::FVmesh(string filename) {
     int b2erow = 0;
 
 
-    B2E = Matrix(totalBFace, 3);
+    B2E = Block(totalBFace, 3);
     for (int i = 0; i < NB; i++) {
         //swap for freestream test
-        Matrix B2Ei = boundaryConnectivity(E, B[i], i + 1);
-        //Matrix B2Ei = boundaryConnectivity(E, B[i], 7);
+        Block B2Ei = boundaryConnectivity(E, B[i], i + 1);
+        //Block B2Ei = boundaryConnectivity(E, B[i], 7);
         B2E.setBlock(b2erow, 0, B2Ei);
         b2erow += B2Ei.rows();
     }
@@ -446,18 +447,18 @@ FVmesh::FVmesh(string filename) {
     Ir = Matrix(I2E.rows(), 2);
 
     for (int i = 0; i < I2E.rows(); i++) {
-        Matrix norm = normal(int(I2E(i, 0)), int(I2E(i, 1)));
+        Matrix norm = normal(I2E(i, 0), I2E(i, 1));
         In.setBlock(i, 0, norm);
-        Il(i, 0) = length(int(I2E(i, 0)), int(I2E(i, 1)));
-        Matrix midp = midpoint(int(I2E(i, 0)), int(I2E(i, 1)));
+        Il(i, 0) = length(I2E(i, 0), I2E(i, 1));
+        Matrix midp = midpoint(I2E(i, 0), I2E(i, 1));
         Ir.setBlock(i, 0, midp);
 
 
-        Matrix temp1 = C.getBlock(int(I2E(i, 0)), 0, 1, 2) + Ir.getBlock(i, 0, 1, 2);
-        Matrix temp3 = C.getBlock(int(I2E(i, 2)), 0, 1, 2) + Ir.getBlock(i, 0, 1, 2);
+        Matrix temp1 = C.getBlock(I2E(i, 0), 0, 1, 2) + Ir.getBlock(i, 0, 1, 2);
+        Matrix temp3 = C.getBlock(I2E(i, 2), 0, 1, 2) + Ir.getBlock(i, 0, 1, 2);
 
-        C.setBlock(int(I2E(i, 0)), 0, temp1);
-        C.setBlock(int(I2E(i, 2)), 0, temp3);
+        C.setBlock(I2E(i, 0), 0, temp1);
+        C.setBlock(I2E(i, 2), 0, temp3);
     }
 
     Bn = Matrix(B2E.rows(), 2);
@@ -465,15 +466,15 @@ FVmesh::FVmesh(string filename) {
     Br = Matrix(B2E.rows(), 2);
 
     for (int i = 0; i < B2E.rows(); i++) {
-        Matrix norm = normal(int(B2E(i, 0)), int(B2E(i, 1)));
+        Matrix norm = normal(B2E(i, 0), B2E(i, 1));
         Bn.setBlock(i, 0, norm);
-        Bl(i, 0) = length(int(B2E(i, 0)), int(B2E(i, 1)));
-        Matrix midp = midpoint(int(B2E(i, 0)), int(B2E(i, 1)));
+        Bl(i, 0) = length(B2E(i, 0), B2E(i, 1));
+        Matrix midp = midpoint(B2E(i, 0), B2E(i, 1));
         Br.setBlock(i, 0, midp);
 
-        Matrix temp = C.getBlock(int(B2E(i, 0)), 0, 1, 2) + Br.getBlock(i, 0, 1, 2);
+        Matrix temp = C.getBlock(B2E(i, 0), 0, 1, 2) + Br.getBlock(i, 0, 1, 2);
 
-        C.setBlock(int(B2E(i, 0)), 0, temp);
+        C.setBlock(B2E(i, 0), 0, temp);
     }
 
     C /= 3;
@@ -505,7 +506,7 @@ FVmesh::FVmesh(string filename) {
 };
 
 
-vector<int> FVmesh::edge2vertex(int t, int e, Matrix& E) {
+vector<int> FVmesh::edge2vertex(int t, int e, Block& E) {
 
     int n1, n2;
     vector<int> returnVal;
@@ -513,31 +514,31 @@ vector<int> FVmesh::edge2vertex(int t, int e, Matrix& E) {
     switch (e) {
     case (0):
         if (E(t, 1) > E(t, 2)) {
-            n1 = int(E(t, 2));
-            n2 = int(E(t, 1));
+            n1 = E(t, 2);
+            n2 = E(t, 1);
         } else {
-            n1 = int(E(t, 1));
-            n2 = int(E(t, 2));
+            n1 = E(t, 1);
+            n2 = E(t, 2);
         }
         break;
 
     case (1):
         if (E(t, 0) > E(t, 2)) {
-            n1 = int(E(t, 2));
-            n2 = int(E(t, 0));
+            n1 = E(t, 2);
+            n2 = E(t, 0);
         } else {
-            n1 = int(E(t, 0));
-            n2 = int(E(t, 2));
+            n1 = E(t, 0);
+            n2 = E(t, 2);
         }
         break;
 
     case(2):
         if (E(t, 0) > E(t, 1)) {
-            n1 = int(E(t, 1));
-            n2 = int(E(t, 0));
+            n1 = E(t, 1);
+            n2 = E(t, 0);
         } else {
-            n1 = int(E(t, 0));
-            n2 = int(E(t, 1));
+            n1 = E(t, 0);
+            n2 = E(t, 1);
         }
         break;
 
@@ -554,8 +555,8 @@ vector<int> FVmesh::edge2vertex(int t, int e, Matrix& E) {
 };
 
 
-Matrix FVmesh::connectivity(Matrix& E) {
-    Matrix S(int(E.max()), int(E.max()));
+Block FVmesh::connectivity(Block& E) {
+    Block S(E.max(), E.max());
 
     int n1, n2;
     int count = 0;
@@ -584,7 +585,7 @@ Matrix FVmesh::connectivity(Matrix& E) {
         }
     }
 
-    Matrix C(count, 4);
+    Block C(count, 4);
     for (int i = 0; i < count; ++i) {
         C(i, 1) = D[i][2];
         C(i, 2) = D[i][1];
@@ -595,9 +596,9 @@ Matrix FVmesh::connectivity(Matrix& E) {
     return C;
 };
 
-Matrix FVmesh::boundaryConnectivity(Matrix& E, Matrix& boundary, int bgroup) {
+Block FVmesh::boundaryConnectivity(Block& E, Block& boundary, int bgroup) {
 
-    Matrix B2E(boundary.rows(), 3);
+    Block B2E(boundary.rows(), 3);
     int B2Ei = 0;
 
     for (int i = 0; i < boundary.rows(); i++) {
@@ -718,8 +719,8 @@ Matrix FVmesh::pointsFromTE(int t, int e) {
     pts(0, 1) = V(n1, 1);
     pts(1, 0) = V(n2, 0);
     pts(1, 1) = V(n2, 1);
-    pts(2, 0) = V(int(E(t, e)) - 1, 0);
-    pts(2, 1) = V(int(E(t, e)) - 1, 1);
+    pts(2, 0) = V(E(t, e) - 1, 0);
+    pts(2, 1) = V(E(t, e) - 1, 1);
 
     return pts;
 

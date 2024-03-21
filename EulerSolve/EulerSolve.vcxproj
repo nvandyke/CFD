@@ -165,6 +165,7 @@
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="block.h" />
     <ClInclude Include="matrix.h" />
     <ClInclude Include="Tools.h" />
   </ItemGroup>
@@ -172,6 +173,7 @@
     <ClCompile Include="FiniteVolume.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="matrix.cpp" />
+    <ClCompile Include="block.cpp" />
     <ClCompile Include="Tools.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
