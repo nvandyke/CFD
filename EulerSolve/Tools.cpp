@@ -1,6 +1,7 @@
 #include "Tools.h"
 #include "matrix.h"
 #include <assert.h>
+#include <map>
 
 void printResults(Matrix& u, Matrix& e) {
 
@@ -556,31 +557,36 @@ vector<int> FVmesh::edge2vertex(int t, int e, Block& E) {
 
 
 Block FVmesh::connectivity(Block& E) {
-    Block S(E.max(), E.max());
+    //Block S(E.max(), E.max());
+    std::map<std::pair<int, int>, int> S;
 
     int n1, n2;
     int count = 0;
     vector<vector<int>> D;
+    std::pair<int, int> key;
+    std::pair<int, int> keyInv;
 
     for (int t = 0; t < E.rows(); ++t) {
         for (int e = 0; e < 3; ++e) {
             vector<int> nodes = edge2vertex(t, e, E);
             n1 = nodes[0];
             n2 = nodes[1];
-            if (S(n1, n2) > 0) {
+            key = std::make_pair(n1, n2);
+            keyInv = std::make_pair(n2, n1);
+            if (S[key] > 0) {
                 vector<int> Di;
-                Di.push_back(int(S(n1, n2)) - 1);
+                Di.push_back(S[key] - 1);
                 Di.push_back(t);
-                Di.push_back(int(S(n2, n1)) - 1);
+                Di.push_back(S[keyInv] - 1);
                 Di.push_back(e);
                 D.push_back(Di);
 
-                S(n1, n2) = 0;
-                S(n2, n1) = 0;
+                S[key] = 0;
+                S[keyInv] = 0;
                 count++;
             } else {
-                S(n1, n2) = t + 1;
-                S(n2, n1) = e + 1;
+                S[key] = t + 1;
+                S[keyInv] = e + 1;
             }
         }
     }

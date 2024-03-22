@@ -109,8 +109,8 @@ void interioredges(FVstate& u, FVmesh& m, double* R, double* sl) {
 #pragma omp for private(j,k,uL,uR,gradux_l,graduy_l,gradux_r,graduy_r,n,l,f,ws,fTl)
         for (i = 0; i < m.I2E.rows(); ++i) {
 
-            j = int(m.I2E(i, 0));
-            k = int(m.I2E(i, 2));
+            j = m.I2E(i, 0);
+            k = m.I2E(i, 2);
             uL = u.u.getBlock(j, 0, 1, 4);
             uR = u.u.getBlock(k, 0, 1, 4);
 
@@ -168,7 +168,7 @@ void boundaryedges(FVstate& u, FVmesh& m, FVConditions c, double* R, double* sl)
     {
 #pragma omp for private(j,ui,gradux_i,graduy_i,n,l,uout,uin,block,ws)
         for (i = 0; i < m.B2E.rows(); ++i) {
-            j = int(m.B2E(i, 0));
+            j = m.B2E(i, 0);
             ui = u.u.getBlock(j, 0, 1, 4);
             if (u.Order == 2) {
                 gradux_i = u.gradux.getBlock(j, 0, 1, 4);
@@ -239,20 +239,12 @@ void boundaryedges(FVstate& u, FVmesh& m, FVConditions c, double* R, double* sl)
 Matrix residual(FVstate& u, FVmesh& m, FVConditions& c, Matrix& dt) {
     //initialize
 
-    double* Rval = new double[u.u.rows() * u.u.cols()];
+    double* Rval = new double[u.u.size()];
     double* sl = new double[u.u.rows()];
     int i, j;
 
-#pragma omp parallel
-    {
-#pragma omp for
-        for (i = 0; i < u.u.rows(); ++i) {
-            sl[i] = 0;
-            for (j = 0; j < u.u.cols(); ++j) {
-                Rval[i * u.u.cols() + j] = 0;
-            }
-        }
-    }
+    memset(Rval, 0, sizeof(double) * u.u.size());
+    memset(sl, 0, sizeof(double) * u.u.rows());
 
     //gradient for second order
     if (u.Order == 2)

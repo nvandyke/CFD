@@ -15,49 +15,31 @@ using std::domain_error;
 
 Matrix::Matrix(int rows, int cols): rows_(rows), cols_(cols) {
     allocSpace();
-    for (int i = 0; i < rows_; ++i) {
-        for (int j = 0; j < cols_; ++j) {
-            p[i][j] = 0;
-        }
-    }
-}
-
-Matrix::Matrix(double** a, int rows, int cols): rows_(rows), cols_(cols) {
-    allocSpace();
-    for (int i = 0; i < rows_; ++i) {
-        for (int j = 0; j < cols_; ++j) {
-            p[i][j] = a[i][j];
-        }
+    for (int i = 0; i < size(); ++i) {
+        p[i] = 0;
     }
 }
 
 Matrix::Matrix(double* a, int rows, int cols): rows_(rows), cols_(cols) {
     allocSpace();
-    for (int i = 0; i < rows_; ++i) {
-        for (int j = 0; j < cols_; ++j) {
-            p[i][j] = a[i * cols + j];
-        }
+    for (int i = 0; i < size(); ++i) {
+        p[i] = a[i];
     }
 }
 
 Matrix::Matrix(): rows_(1), cols_(1) {
     allocSpace();
-    p[0][0] = 0;
+    p[0] = 0;
 }
 
 Matrix::~Matrix() {
-    for (int i = 0; i < rows_; ++i) {
-        delete[] p[i];
-    }
     delete[] p;
 }
 
 Matrix::Matrix(const Matrix& m): rows_(m.rows_), cols_(m.cols_) {
     allocSpace();
-    for (int i = 0; i < rows_; ++i) {
-        for (int j = 0; j < cols_; ++j) {
-            p[i][j] = m.p[i][j];
-        }
+    for (int i = 0; i < size(); ++i) {
+        p[i] = m.p[i];
     }
 }
 
@@ -67,9 +49,6 @@ Matrix& Matrix::operator=(const Matrix& m) {
     }
 
     if (rows_ != m.rows_ || cols_ != m.cols_) {
-        for (int i = 0; i < rows_; ++i) {
-            delete[] p[i];
-        }
         delete[] p;
 
         rows_ = m.rows_;
@@ -77,38 +56,35 @@ Matrix& Matrix::operator=(const Matrix& m) {
         allocSpace();
     }
 
-    for (int i = 0; i < rows_; ++i) {
-        for (int j = 0; j < cols_; ++j) {
-            p[i][j] = m.p[i][j];
-        }
+    for (int i = 0; i < size(); ++i) {
+        p[i] = m.p[i];
     }
     return *this;
 }
 
 Matrix& Matrix::operator+=(const Matrix& m) {
-    for (int i = 0; i < rows_; ++i) {
-        for (int j = 0; j < cols_; ++j) {
-            p[i][j] += m.p[i][j];
-        }
+    for (int i = 0; i < size(); ++i) {
+        p[i] += m.p[i];
     }
     return *this;
 }
 
 Matrix& Matrix::operator-=(const Matrix& m) {
-    for (int i = 0; i < rows_; ++i) {
-        for (int j = 0; j < cols_; ++j) {
-            p[i][j] -= m.p[i][j];
-        }
+    for (int i = 0; i < size(); ++i) {
+        p[i] -= m.p[i];
     }
     return *this;
 }
 
 Matrix& Matrix::operator*=(const Matrix& m) {
     Matrix temp(rows_, m.cols_);
+    Matrix mT = m;
+    mT = mT.transpose();
     for (int i = 0; i < temp.rows_; ++i) {
         for (int j = 0; j < temp.cols_; ++j) {
             for (int k = 0; k < cols_; ++k) {
-                temp.p[i][j] += (p[i][k] * m.p[k][j]);
+                temp.p[i * temp.cols_ + j] += (p[i * cols_ + k] * mT.p[j * temp.cols_ + k]);
+                //temp.p[i * temp.cols_ + j] += (p[i * cols_ + k] * m.p[k * temp.cols_ + j]);
             }
         }
     }
@@ -116,19 +92,15 @@ Matrix& Matrix::operator*=(const Matrix& m) {
 }
 
 Matrix& Matrix::operator*=(double num) {
-    for (int i = 0; i < rows_; ++i) {
-        for (int j = 0; j < cols_; ++j) {
-            p[i][j] *= num;
-        }
+    for (int i = 0; i < size(); ++i) {
+        p[i] *= num;
     }
     return *this;
 }
 
 Matrix& Matrix::operator/=(double num) {
-    for (int i = 0; i < rows_; ++i) {
-        for (int j = 0; j < cols_; ++j) {
-            p[i][j] /= num;
-        }
+    for (int i = 0; i < size(); ++i) {
+        p[i] /= num;
     }
     return *this;
 }
@@ -137,18 +109,18 @@ Matrix Matrix::operator^(int num) {
     Matrix temp(*this);
     return expHelper(temp, num);
 }
-
+/*
 void Matrix::swapRows(int r1, int r2) {
     double* temp = p[r1];
     p[r1] = p[r2];
     p[r2] = temp;
 }
-
+*/
 Matrix Matrix::transpose() {
     Matrix ret(cols_, rows_);
     for (int i = 0; i < rows_; ++i) {
         for (int j = 0; j < cols_; ++j) {
-            ret.p[j][i] = p[i][j];
+            ret.p[j * rows_ + i] = p[i * cols_ + j];
         }
     }
     return ret;
@@ -163,15 +135,13 @@ Matrix Matrix::createIdentity(int size) {
     for (int i = 0; i < temp.rows_; ++i) {
         for (int j = 0; j < temp.cols_; ++j) {
             if (i == j) {
-                temp.p[i][j] = 1;
-            } else {
-                temp.p[i][j] = 0;
+                temp.p[i * temp.cols_ + j] = 1;
             }
         }
     }
     return temp;
 }
-
+/*
 Matrix Matrix::solve(Matrix A, Matrix b) {
     // Gaussian elimination
     for (int i = 0; i < A.rows_; ++i) {
@@ -242,7 +212,7 @@ Matrix Matrix::bandSolve(Matrix A, Matrix b, int k) {
 
     return x;
 }
-
+*/
 // functions on VECTORS
 double Matrix::dotProduct(Matrix a, Matrix b) {
     double sum = 0;
@@ -265,7 +235,7 @@ Matrix Matrix::augment(Matrix A, Matrix B) {
     }
     return AB;
 }
-
+/*
 Matrix Matrix::gaussianEliminate() {
     Matrix Ab(*this);
     int rows = Ab.rows_;
@@ -440,16 +410,13 @@ Matrix Matrix::inverse() {
     }
     return AInverse;
 }
-
+*/
 
 /* PRIVATE HELPER FUNCTIONS
  ********************************/
 
 void Matrix::allocSpace() {
-    p = new double* [rows_];
-    for (int i = 0; i < rows_; ++i) {
-        p[i] = new double[cols_];
-    }
+    p = new double[size()];
 }
 
 Matrix Matrix::expHelper(const Matrix& m, int num) {
@@ -498,9 +465,9 @@ Matrix operator/(const Matrix& m, double num) {
 
 ostream& operator<<(ostream& os, const Matrix& m) {
     for (int i = 0; i < m.rows_; ++i) {
-        os << m.p[i][0];
+        os << m.p[i * m.cols_];
         for (int j = 1; j < m.cols_; ++j) {
-            os << " " << m.p[i][j];
+            os << " " << m.p[i * m.cols_ + j];
         }
         os << endl;
     }
@@ -508,10 +475,8 @@ ostream& operator<<(ostream& os, const Matrix& m) {
 }
 
 istream& operator>>(istream& is, Matrix& m) {
-    for (int i = 0; i < m.rows_; ++i) {
-        for (int j = 0; j < m.cols_; ++j) {
-            is >> m.p[i][j];
-        }
+    for (int i = 0; i < m.size(); ++i) {
+        is >> m.p[i];
     }
     return is;
 }
@@ -528,7 +493,7 @@ void Matrix::print(std::ostream& os) {
     int index = 0;
     for (int i = 0; i < rows_; i++) {
         for (int j = 0; j < cols_; j++) {
-            os << p[i][j] << " ";
+            os << p[i * cols_ + j] << " ";
         }
         os << endl;
     }
@@ -537,7 +502,7 @@ void Matrix::print(std::ostream& os) {
 void Matrix::setBlock(int i, int j, Matrix& m) {
     for (int a = i, c = 0; a < i + m.rows(); a++, c++) {
         for (int b = j, d = 0; b < j + m.cols(); b++, d++) {
-            p[a][b] = m.p[c][d];
+            p[a * cols_ + b] = m.p[c * m.cols_ + d];
         }
     }
 
@@ -547,24 +512,24 @@ const Matrix Matrix::getBlock(int i, int j, int x, int y) const {
     Matrix m(x, y);
     for (int a = i, c = 0; a < i + x; a++, c++) {
         for (int b = j, d = 0; b < j + y; b++, d++) {
-            m.p[c][d] = p[a][b];
+            m.p[c * m.cols_ + d] = p[a * cols_ + b];
         }
     }
     return m;
 }
 
 double Matrix::max() {
-    double max = p[0][0];
-    double value;
-    for (int i = 0; i < rows_; i++) {
-        for (int j = 0; j < cols_; j++) {
-            value = p[i][j];
-            if (value > max) {
-                max = value;
-            }
+    double max = p[0];
+    for (int i = 0; i < size(); i++) {
+        if (p[i] > max) {
+            max = p[i];
         }
     }
     return max;
+}
+
+int Matrix::size() {
+    return rows_ * cols_;
 }
 
 
