@@ -4,7 +4,7 @@
 const double CFL = 0.5;
 
 
-Matrix FV_solve(FVstate& u, FVmesh m, FVConditions c) {
+Matrix FV_solve(FVstate& u, FVmesh& m, FVConditions c) {
     //constants
     double tol = 1e-7;
     double max = 1 / tol;

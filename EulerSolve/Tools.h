@@ -90,7 +90,7 @@ public:
 
 
 //Finite Volume Methods
-Matrix FV_solve(FVstate& u, FVmesh m, FVConditions c);
+Matrix FV_solve(FVstate& u, FVmesh& m, FVConditions c);
 
 Matrix residual(FVstate& u, FVmesh& m, FVConditions& c, Matrix& dt);
 

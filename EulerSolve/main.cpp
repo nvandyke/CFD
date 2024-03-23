@@ -34,15 +34,6 @@ void FVrun(string ic, string mesh, int order) {
     return;
 }
 
-//void FErun()
-//{
-//	string filename = "mesh.txt";
-//	FEmesh m(filename);
-//	FEConditions c(0.5, 0);
-//	FEstate u(1, 1, m, c);
-//	cout << m.nodes << endl;
-//	return;
-//}
 inline bool exists(const string& name) {
     ifstream f(name.c_str());
     return f.good();

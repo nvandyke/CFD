@@ -704,16 +704,16 @@ Matrix FVmesh::pointsFromTE(int t, int e) {
     int n1, n2;
     switch (e) {
     case 0:
-        n1 = int(E(t, 1)) - 1;
-        n2 = int(E(t, 2)) - 1;
+        n1 = E(t, 1) - 1;
+        n2 = E(t, 2) - 1;
         break;
     case 1:
-        n1 = int(E(t, 2)) - 1;
-        n2 = int(E(t, 0)) - 1;
+        n1 = E(t, 2) - 1;
+        n2 = E(t, 0) - 1;
         break;
     case 2:
-        n1 = int(E(t, 0)) - 1;
-        n2 = int(E(t, 1)) - 1;
+        n1 = E(t, 0) - 1;
+        n2 = E(t, 1) - 1;
         break;
     default:
         cout << "poop" << endl;
@@ -768,10 +768,7 @@ double FVmesh::Area(int t) {
     Matrix pts = pointsFromTE(t, 0);
 
     double A = abs(.5 * (pts(0, 0) * (pts(1, 1) - pts(2, 1)) + pts(1, 0) * (pts(2, 1) - pts(0, 1)) + pts(2, 0) * (pts(0, 1) - pts(1, 1))));
-    if (A < 1e-10) {
-        cout << pts << endl;
-        assert(0);
-    }
+    assert(A > 1e-10);
     return A;
 }
 
@@ -779,24 +776,23 @@ double FVmesh::Area(int t) {
 double FVmesh::verify() {
     Matrix sum(E.rows(), 2);
     Matrix tot(E.rows(), 1);
+    Matrix curSum(1, 2);
+    Matrix curSum1(1, 2);
+    Matrix curSum2(1, 2);
 
-    for (int i = 0; i < I2E.rows(); i++) {
-        Matrix curSum1 = sum.getBlock(int(I2E(i, 0)), 0, 1, 2);
-        curSum1 += In.getBlock(i, 0, 1, 2) * Il(i, 0);
+    for (int i = 0; i < I2E.rows(); ++i) {
+        curSum1 = sum.getBlock(I2E(i, 0), 0, 1, 2) + In.getBlock(i, 0, 1, 2) * Il(i, 0);
+        curSum2 = sum.getBlock(I2E(i, 2), 0, 1, 2) - In.getBlock(i, 0, 1, 2) * Il(i, 0);
 
-        Matrix curSum2 = sum.getBlock(int(I2E(i, 2)), 0, 1, 2);
-        curSum2 -= In.getBlock(i, 0, 1, 2) * Il(i, 0);
-
-        sum.setBlock(int(I2E(i, 0)), 0, curSum1);
-        sum.setBlock(int(I2E(i, 2)), 0, curSum2);
+        sum.setBlock(I2E(i, 0), 0, curSum1);
+        sum.setBlock(I2E(i, 2), 0, curSum2);
     }
-    for (int i = 0; i < B2E.rows(); i++) {
-        Matrix curSum = sum.getBlock(int(B2E(i, 0)), 0, 1, 2);
-        curSum += Bn.getBlock(i, 0, 1, 2) * Bl(i, 0);
+    for (int i = 0; i < B2E.rows(); ++i) {
+        curSum = sum.getBlock(B2E(i, 0), 0, 1, 2) + Bn.getBlock(i, 0, 1, 2) * Bl(i, 0);
 
-        sum.setBlock(int(B2E(i, 0)), 0, curSum);
+        sum.setBlock(B2E(i, 0), 0, curSum);
     }
-    for (int i = 0; i < tot.rows(); i++) {
+    for (int i = 0; i < tot.rows(); ++i) {
         tot(i, 0) = sqrt(sum(i, 0) * sum(i, 0) + sum(i, 1) * sum(i, 1));
     }
     return tot.max();
