@@ -4,6 +4,7 @@
 
 #include <stdexcept>
 #include "matrix.h"
+#include <assert.h>
 
 #define EPS 1e-10
 
@@ -541,4 +542,15 @@ Matrix operator%(Matrix& m1, Matrix& m2) {
         }
     }
     return temp;
+}
+
+extern "C" {
+    void wrapper(double*, double*, double*, int);
+}
+
+Matrix Matrix::multInPlace(Matrix& m) {
+    assert(m.size() == size());
+    Matrix ans(rows_, cols_);
+    wrapper(p, m.p, ans.p, size());
+    return ans;
 }

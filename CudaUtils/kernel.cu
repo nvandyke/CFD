@@ -4,6 +4,7 @@
 //#include <helper_cuda.h>
 
 #include <stdio.h>
+#include <assert.h>
 
 cudaError_t multiplyWithCuda(const double* A, const double* B, double* C, int numElements);
 cudaError_t divideWithCuda(const double* A, const double* B, double* C, int numElements);
@@ -20,6 +21,7 @@ __global__ void vectorMultiply(const double* A, const double* B, double* C, int 
 
 __global__ void vectorDivide(const double* A, const double* B, double* C, int numElements) {
     int i = blockDim.x * blockIdx.x + threadIdx.x;
+
 
     if (i < numElements) {
         C[i] = A[i] / B[i];
@@ -42,7 +44,7 @@ __global__ void vectorSubtract(const double* A, const double* B, double* C, int 
     }
 }
 
-int main()
+int notmain()
 {
     const int arraySize = 5;
     const double a[arraySize] = { 1, 2, 3, 4, 5 };
@@ -150,7 +152,7 @@ cudaError_t multiplyWithCuda(const double* A, const double* B, double* C, int nu
     // Check for any errors launching the kernel
     cudaStatus = cudaGetLastError();
     if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "addKernel launch failed: %s\n", cudaGetErrorString(cudaStatus));
+        fprintf(stderr, "multiplyWithCuda launch failed: %s\n", cudaGetErrorString(cudaStatus));
         goto Error;
     }
     
@@ -230,7 +232,7 @@ cudaError_t divideWithCuda(const double* A, const double* B, double* C, int numE
     // Check for any errors launching the kernel
     cudaStatus = cudaGetLastError();
     if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "addKernel launch failed: %s\n", cudaGetErrorString(cudaStatus));
+        fprintf(stderr, "divideWithCuda launch failed: %s\n", cudaGetErrorString(cudaStatus));
         goto Error;
     }
 
@@ -310,7 +312,7 @@ cudaError_t addWithCuda(const double* A, const double* B, double* C, int numElem
     // Check for any errors launching the kernel
     cudaStatus = cudaGetLastError();
     if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "addKernel launch failed: %s\n", cudaGetErrorString(cudaStatus));
+        fprintf(stderr, "addWithCuda launch failed: %s\n", cudaGetErrorString(cudaStatus));
         goto Error;
     }
 
@@ -390,7 +392,7 @@ cudaError_t subtractWithCuda(const double* A, const double* B, double* C, int nu
     // Check for any errors launching the kernel
     cudaStatus = cudaGetLastError();
     if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "addKernel launch failed: %s\n", cudaGetErrorString(cudaStatus));
+        fprintf(stderr, "subtractWithCuda launch failed: %s\n", cudaGetErrorString(cudaStatus));
         goto Error;
     }
 
@@ -415,4 +417,19 @@ Error:
     cudaFree(dev_c);
 
     return cudaStatus;
+}
+
+void cudaStatus() {
+    struct cudaDeviceProp properties;
+    cudaGetDeviceProperties(&properties, 0);
+    fprintf(stdout, "using %i multiprocessors\n", properties.multiProcessorCount);
+    fprintf(stdout, "max threads per processor: %i\n", properties.maxThreadsPerMultiProcessor);
+}
+
+
+extern "C" {
+    void wrapper(double*a, double* b, double* c, int numElements) {
+        cudaError_t cudaStatus = multiplyWithCuda(a, b, c, numElements);
+        assert(cudaStatus == cudaSuccess);
+    }
 }

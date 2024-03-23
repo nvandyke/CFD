@@ -4,6 +4,40 @@
 const double CFL = 0.5;
 
 
+extern "C" {
+    void FVrun(string, string, int);
+}
+
+
+void FVrun(string ic, string mesh, int order) {
+    //string filename = "mesh.txt";
+    FVmesh m(mesh);
+    double Mach = 0.5;
+    double angleOfAttack = 0.0;
+    //int order = 1;
+
+    FVConditions c(Mach, angleOfAttack);
+    FVstate u(order, m, c);
+
+    if (ic != "") {
+        ifstream inputfile;
+        inputfile.open(ic);
+        inputfile >> u.u;
+        inputfile.close();
+    }
+
+    Matrix e = FV_solve(u, m, c);
+    printResults(u.u, e);
+
+
+
+    //u.Order = 2;
+    //Matrix e2 = FV_solve(u, m, c);
+    //printResults(u.u, e2);
+    return;
+}
+
+
 Matrix FV_solve(FVstate& u, FVmesh& m, FVConditions c) {
     //constants
     double tol = 1e-7;
@@ -21,7 +55,7 @@ Matrix FV_solve(FVstate& u, FVmesh& m, FVConditions c) {
 
         for (iter = 0; iter < MaxIter; ++iter) {
             R = residual(u, m, c, dt);
-            u.u = u.u - dt % R;
+            u.u = u.u - dt.multInPlace(R);
             e(iter, 0) = R.max();
             cout << e(iter, 0) << endl;
             if (e(iter, 0) < tol)

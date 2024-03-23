@@ -53,6 +53,7 @@ public:
     const Matrix getBlock(int i, int j, int x, int y) const;
     double max();
     int size();
+    Matrix multInPlace(Matrix& m);
 
 private:
     int rows_, cols_;
