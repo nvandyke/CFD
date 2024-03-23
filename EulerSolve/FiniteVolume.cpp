@@ -274,54 +274,112 @@ Matrix residual(FVstate& u, FVmesh& m, FVConditions& c, Matrix& dt) {
     return R;
 }
 
-void gradient(FVstate& u, FVmesh& m) {
-    //reset gradient of u
-    u.gradux = Matrix(u.u.rows(), u.u.cols());
-    u.graduy = Matrix(u.u.rows(), u.u.cols());
 
-    Matrix goin_lx = Matrix(1, 4);
-    Matrix goin_rx = Matrix(1, 4);
-    Matrix goin_ly = Matrix(1, 4);
-    Matrix goin_ry = Matrix(1, 4);
+void grad_internal(FVstate& u, FVmesh& m, double* gradux, double* graduy) {
+
     Matrix goin_x = Matrix(1, 4);
     Matrix goin_y = Matrix(1, 4);
     Matrix stateAdd = Matrix(1, 4);
     Matrix ui = Matrix(1, 4);
     Matrix n = Matrix(1, 2);
-    int j, k;
+    int i, j, k;
+
+#pragma omp parallel 
+    {
+#pragma omp for private(j,k,stateAdd,n,goin_x,goin_y)
+        for (i = 0; i < m.I2E.rows(); ++i) {
+            j = m.I2E(i, 0);
+            k = m.I2E(i, 2);
+
+            stateAdd = u.u.getBlock(j, 0, 1, 4) + u.u.getBlock(k, 0, 1, 4);
+
+            n = m.In.getBlock(i, 0, 1, 2) * (m.Il(i, 0) / 2);
+
+            goin_x = stateAdd * n(0, 0);
+            goin_y = stateAdd * n(0, 1);
+
+#pragma omp critical
+            {
+                gradux[j * u.u.cols() + 0] += goin_x(0, 0);
+                gradux[j * u.u.cols() + 1] += goin_x(0, 1);
+                gradux[j * u.u.cols() + 2] += goin_x(0, 2);
+                gradux[j * u.u.cols() + 3] += goin_x(0, 3);
+
+                gradux[k * u.u.cols() + 0] -= goin_x(0, 0);
+                gradux[k * u.u.cols() + 1] -= goin_x(0, 1);
+                gradux[k * u.u.cols() + 2] -= goin_x(0, 2);
+                gradux[k * u.u.cols() + 3] -= goin_x(0, 3);
+
+
+                graduy[j * u.u.cols() + 0] += goin_y(0, 0);
+                graduy[j * u.u.cols() + 1] += goin_y(0, 1);
+                graduy[j * u.u.cols() + 2] += goin_y(0, 2);
+                graduy[j * u.u.cols() + 3] += goin_y(0, 3);
+
+                graduy[k * u.u.cols() + 0] -= goin_y(0, 0);
+                graduy[k * u.u.cols() + 1] -= goin_y(0, 1);
+                graduy[k * u.u.cols() + 2] -= goin_y(0, 2);
+                graduy[k * u.u.cols() + 3] -= goin_y(0, 3);
+            }
+        }
+    }
+}
+
+void grad_boundary(FVstate& u, FVmesh& m, double* gradux, double* graduy) {
+
+
+    Matrix goin_x = Matrix(1, 4);
+    Matrix goin_y = Matrix(1, 4);
+    Matrix ui = Matrix(1, 4);
+    Matrix n = Matrix(1, 2);
+    int i, j;
+
+#pragma omp parallel 
+    {
+#pragma omp for private(j,ui,n,goin_x,goin_y)
+        for (i = 0; i < m.B2E.rows(); ++i) {
+            j = m.B2E(i, 0);
+            ui = u.u.getBlock(j, 0, 1, 4);
+            n = m.Bn.getBlock(i, 0, 1, 2) * m.Bl(i, 0);
+
+            goin_x = ui * n(0, 0);
+            goin_y = ui * n(0, 1);
+
+#pragma omp critical
+            {
+                gradux[j * u.u.cols() + 0] += goin_x(0, 0);
+                gradux[j * u.u.cols() + 1] += goin_x(0, 1);
+                gradux[j * u.u.cols() + 2] += goin_x(0, 2);
+                gradux[j * u.u.cols() + 3] += goin_x(0, 3);
+
+
+                graduy[j * u.u.cols() + 0] += goin_y(0, 0);
+                graduy[j * u.u.cols() + 1] += goin_y(0, 1);
+                graduy[j * u.u.cols() + 2] += goin_y(0, 2);
+                graduy[j * u.u.cols() + 3] += goin_y(0, 3);
+            }
+        }
+    }
+
+}
+
+void gradient(FVstate& u, FVmesh& m) {
+    //reset gradient of u
+
+    double* gradux = new double[u.u.size()];
+    double* graduy = new double[u.u.size()];
+
+    memset(gradux, 0, sizeof(double) * u.u.size());
+    memset(graduy, 0, sizeof(double) * u.u.size());
 
     //internal edges
-    for (int i = 0; i < m.I2E.rows(); ++i) {
-        j = int(m.I2E(i, 0));
-        k = int(m.I2E(i, 2));
-        stateAdd = u.u.getBlock(j, 0, 1, 4) + u.u.getBlock(k, 0, 1, 4);
-
-        n = m.In.getBlock(i, 0, 1, 2) * (m.Il(i, 0) / 2);
-
-        goin_lx = u.gradux.getBlock(j, 0, 1, 4) + stateAdd * n(0, 0);
-        goin_rx = u.gradux.getBlock(k, 0, 1, 4) - stateAdd * n(0, 0);
-        goin_ly = u.graduy.getBlock(j, 0, 1, 4) + stateAdd * n(0, 1);
-        goin_ry = u.graduy.getBlock(k, 0, 1, 4) - stateAdd * n(0, 1);
-
-        u.gradux.setBlock(j, 0, goin_lx);
-        u.gradux.setBlock(k, 0, goin_rx);
-
-        u.graduy.setBlock(j, 0, goin_ly);
-        u.graduy.setBlock(k, 0, goin_ry);
-    }
+    grad_internal(u, m, gradux, graduy);
 
     //boundary edges
-    for (int i = 0; i < m.B2E.rows(); ++i) {
-        j = int(m.B2E(i, 0));
-        ui = u.u.getBlock(j, 0, 1, 4);
-        n = m.Bn.getBlock(i, 0, 1, 2) * m.Bl(i, 0);
+    grad_boundary(u, m, gradux, graduy);
 
-        goin_x = u.gradux.getBlock(j, 0, 1, 4) + ui * n(0, 0);
-        goin_y = u.graduy.getBlock(j, 0, 1, 4) + ui * n(0, 1);
-
-        u.gradux.setBlock(j, 0, goin_x);
-        u.graduy.setBlock(j, 0, goin_y);
-    }
+    u.gradux = Matrix (gradux, u.u.rows(), u.u.cols());
+    u.graduy = Matrix (graduy, u.u.rows(), u.u.cols());
 
     u.gradux = u.gradux % m.A;
     u.graduy = u.graduy % m.A;
