@@ -419,16 +419,19 @@ Error:
     return cudaStatus;
 }
 
-void cudaStatus() {
+void cudaCheck() {
     struct cudaDeviceProp properties;
     cudaGetDeviceProperties(&properties, 0);
     fprintf(stdout, "using %i multiprocessors\n", properties.multiProcessorCount);
     fprintf(stdout, "max threads per processor: %i\n", properties.maxThreadsPerMultiProcessor);
+    fprintf(stdout, "number of concurrent jobs %i\n", properties.multiProcessorCount * properties.maxThreadsPerMultiProcessor);
 }
 
 
 extern "C" {
     void wrapper(double*a, double* b, double* c, int numElements) {
+        cudaCheck();
+        exit(0);
         cudaError_t cudaStatus = multiplyWithCuda(a, b, c, numElements);
         assert(cudaStatus == cudaSuccess);
     }

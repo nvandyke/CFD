@@ -67,7 +67,7 @@ def ploterror(error):
 
 resultfile = 'u.txt'
 errorfile = 'e.txt'
-meshfile = 'meshes\\bump1.gri'
+meshfile = 'meshes\\kbump2.gri'
 
 mesh = readgri(meshfile)
 result = readresult(resultfile)

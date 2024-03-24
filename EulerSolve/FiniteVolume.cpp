@@ -55,7 +55,7 @@ Matrix FV_solve(FVstate& u, FVmesh& m, FVConditions c) {
 
         for (iter = 0; iter < MaxIter; ++iter) {
             R = residual(u, m, c, dt);
-            u.u = u.u - dt.multInPlace(R);
+            u.u = u.u - dt % R;
             e(iter, 0) = R.max();
             cout << e(iter, 0) << endl;
             if (e(iter, 0) < tol)
@@ -412,11 +412,14 @@ void gradient(FVstate& u, FVmesh& m) {
     //boundary edges
     grad_boundary(u, m, gradux, graduy);
 
-    u.gradux = Matrix (gradux, u.u.rows(), u.u.cols());
-    u.graduy = Matrix (graduy, u.u.rows(), u.u.cols());
+    u.gradux = Matrix(gradux, u.u.rows(), u.u.cols());
+    u.graduy = Matrix(graduy, u.u.rows(), u.u.cols());
 
     u.gradux = u.gradux % m.A;
     u.graduy = u.graduy % m.A;
+
+    delete[] gradux;
+    delete[] graduy;
 
     return;
 }
