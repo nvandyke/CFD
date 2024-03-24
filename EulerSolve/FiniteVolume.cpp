@@ -55,7 +55,8 @@ Matrix FV_solve(FVstate& u, FVmesh& m, FVConditions c) {
 
         for (iter = 0; iter < MaxIter; ++iter) {
             R = residual(u, m, c, dt);
-            u.u = u.u - dt % R;
+            //u.u = u.u - dt % R;
+            u.u = u.u - dt.multInPlace(R);
             e(iter, 0) = R.max();
             cout << e(iter, 0) << endl;
             if (e(iter, 0) < tol)

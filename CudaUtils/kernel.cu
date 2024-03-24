@@ -106,6 +106,22 @@ cudaError_t multiplyWithCuda(const double* A, const double* B, double* C, int nu
     double*dev_b = 0;
     double*dev_c = 0;
     cudaError_t cudaStatus;
+    int blockSize;      // The launch configurator returned block size
+    int minGridSize;    // The minimum grid size needed to achieve the
+                        // maximum occupancy for a full device
+                        // launch
+    int gridSize;       // The actual grid size needed, based on input
+                        // size
+
+    cudaOccupancyMaxPotentialBlockSize(
+        &minGridSize,
+        &blockSize,
+        (void*)vectorMultiply,
+        0,
+        numElements);
+
+    // Round up according to array size
+    gridSize = (numElements + blockSize - 1) / blockSize;
 
     // Choose which GPU to run on, change this on a multi-GPU system.
     cudaStatus = cudaSetDevice(0);
@@ -146,8 +162,8 @@ cudaError_t multiplyWithCuda(const double* A, const double* B, double* C, int nu
         goto Error;
     }
 
-    // Launch a kernel on the GPU with one thread for each element.
-    vectorMultiply<<<1, numElements >>>(dev_a, dev_b, dev_c, numElements);
+    // Launch a kernel on the GPU with multiple grids/blocks.
+    vectorMultiply<<<gridSize, blockSize >>>(dev_a, dev_b, dev_c, numElements);
 
     // Check for any errors launching the kernel
     cudaStatus = cudaGetLastError();
@@ -425,13 +441,16 @@ void cudaCheck() {
     fprintf(stdout, "using %i multiprocessors\n", properties.multiProcessorCount);
     fprintf(stdout, "max threads per processor: %i\n", properties.maxThreadsPerMultiProcessor);
     fprintf(stdout, "number of concurrent jobs %i\n", properties.multiProcessorCount * properties.maxThreadsPerMultiProcessor);
+
+    
+
+
+
 }
 
 
 extern "C" {
     void wrapper(double*a, double* b, double* c, int numElements) {
-        cudaCheck();
-        exit(0);
         cudaError_t cudaStatus = multiplyWithCuda(a, b, c, numElements);
         assert(cudaStatus == cudaSuccess);
     }
