@@ -13,6 +13,15 @@ using namespace std;
 const double y = 1.4;
 const double pi = 3.14159265358979323846;
 
+enum BoundaryCondition {
+    Inviscid_Wall,
+    Subsonic_Outlet,
+    Subsonic_Inlet,
+    Supersonic_Outlet,
+    Supersonic_Inlet,
+    Freestream
+};
+
 void printResults(Matrix& u, Matrix& e);
 
 Matrix roots(double a, double b, double c);

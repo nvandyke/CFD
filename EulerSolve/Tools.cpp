@@ -433,10 +433,27 @@ FVmesh::FVmesh(string filename) {
 
 
     B2E = Block(totalBFace, 3);
+    Block B2Ei = Block(1, 3);
+    int wallType;
     for (int i = 0; i < NB; i++) {
-        //swap for freestream test
-        Block B2Ei = boundaryConnectivity(E, B[i], i + 1);
-        //Block B2Ei = boundaryConnectivity(E, B[i], 7);
+        cout << Bname[i] << endl;
+        if (Bname[i] == "Inviscid_Wall") {
+            wallType = Inviscid_Wall;
+        } else if(Bname[i] == "Subsonic_Outlet") {
+            wallType = Subsonic_Outlet;
+        } else if(Bname[i] == "Subsonic_Inlet") {
+            wallType = Subsonic_Inlet;
+        } else if(Bname[i] == "Supersonic_Outlet") {
+            wallType = Supersonic_Outlet;
+        } else if(Bname[i] == "Supersonic_Inlet") {
+            wallType = Supersonic_Inlet;
+        } else {
+            wallType = Freestream;
+        }
+
+
+        B2Ei = boundaryConnectivity(E, B[i], wallType);
+        //B2Ei = boundaryConnectivity(E, B[i], Freestream);
         B2E.setBlock(b2erow, 0, B2Ei);
         b2erow += B2Ei.rows();
     }
