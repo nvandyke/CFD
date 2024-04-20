@@ -6,6 +6,11 @@
 #include <stdio.h>
 #include <assert.h>
 
+// The launch configurator returned block size
+int blockSize;
+// The actual grid size needed, based on input size
+int gridSize;
+
 cudaError_t multiplyWithCuda(const double* A, const double* B, double* C, int numElements);
 cudaError_t divideWithCuda(const double* A, const double* B, double* C, int numElements);
 cudaError_t addWithCuda(const double* A, const double* B, double* C, int numElements);
@@ -106,22 +111,7 @@ cudaError_t multiplyWithCuda(const double* A, const double* B, double* C, int nu
     double*dev_b = 0;
     double*dev_c = 0;
     cudaError_t cudaStatus;
-    int blockSize;      // The launch configurator returned block size
-    int minGridSize;    // The minimum grid size needed to achieve the
-                        // maximum occupancy for a full device
-                        // launch
-    int gridSize;       // The actual grid size needed, based on input
-                        // size
-
-    cudaOccupancyMaxPotentialBlockSize(
-        &minGridSize,
-        &blockSize,
-        (void*)vectorMultiply,
-        0,
-        numElements);
-
-    // Round up according to array size
-    gridSize = (numElements + blockSize - 1) / blockSize;
+    
 
     // Choose which GPU to run on, change this on a multi-GPU system.
     cudaStatus = cudaSetDevice(0);
@@ -453,5 +443,28 @@ extern "C" {
     void wrapper(double*a, double* b, double* c, int numElements) {
         cudaError_t cudaStatus = multiplyWithCuda(a, b, c, numElements);
         assert(cudaStatus == cudaSuccess);
+    }
+    void cudaStart(int numElements) {
+        int minGridSize;    // The minimum grid size needed to achieve the
+                            // maximum occupancy for a full device
+                            // launch
+
+        cudaOccupancyMaxPotentialBlockSize(
+            &minGridSize,
+            &blockSize,
+            (void*)vectorMultiply,
+            0,
+            numElements);
+
+        // Round up according to array size
+        gridSize = (numElements + blockSize - 1) / blockSize;
+        fprintf(stdout, "mesh %i, grid %i, block %i\n", numElements, gridSize, blockSize);
+    }
+    void cudaEnd() {
+        cudaError_t cudaStatus = cudaDeviceReset();
+        if (cudaStatus != cudaSuccess) {
+            fprintf(stderr, "cudaDeviceReset failed!");
+        }
+        fprintf(stdout, "Cuda Freed\n");
     }
 }

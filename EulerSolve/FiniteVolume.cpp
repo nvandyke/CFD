@@ -6,6 +6,8 @@ const double CFL = 0.5;
 
 extern "C" {
     void FVrun(string, string, int);
+    void cudaStart(int);
+    void cudaEnd();
 }
 
 
@@ -45,6 +47,7 @@ Matrix FV_solve(FVstate& u, FVmesh& m, FVConditions c) {
     int MaxIter = 100000;
 
     //initialize
+    cudaStart(u.u.size());
     Matrix e(MaxIter + 1, 1);
     Matrix dt(u.u.rows(), u.u.cols());
     Matrix R(u.u.rows(), u.u.cols());
@@ -55,8 +58,8 @@ Matrix FV_solve(FVstate& u, FVmesh& m, FVConditions c) {
 
         for (iter = 0; iter < MaxIter; ++iter) {
             R = residual(u, m, c, dt);
-            //u.u = u.u - dt % R;
-            u.u = u.u - dt.multInPlace(R);
+            u.u = u.u - dt % R;
+            //u.u = u.u - dt.multInPlace(R);
             e(iter, 0) = R.max();
             cout << e(iter, 0) << endl;
             if (e(iter, 0) < tol)
@@ -114,6 +117,7 @@ Matrix FV_solve(FVstate& u, FVmesh& m, FVConditions c) {
                 printResults(u.u, e);
         }
     }
+    cudaEnd();
     cout << "Stopped at iteration " << iter << endl;
     Matrix retVal(int(iter) + 1, 1);
     retVal = e.getBlock(0, 0, iter + 1, 1);
@@ -214,39 +218,39 @@ void boundaryedges(FVstate& u, FVmesh& m, FVConditions c, double* R, double* sl)
             l = m.Bl(i, 0);
 
             switch ((int)m.B2E(i, 2)) {
-            case 1:
-            case 3:
+            case Inviscid_Wall:
                 //Inviscid Wall
                 block = wallFlux(ui, n) * l;
                 ws = fabs(waveSpeed(ui, n)) * l;
                 break;
 
-            case 2:
+            case Subsonic_Outlet:
                 //Subsonic Outlet
                 uout = Outflow(ui, n, c.Pinf);
                 block = (F(uout) * (n.transpose())).transpose() * l;
                 ws = fabs(waveSpeed(uout, n)) * l;
                 break;
 
-            case 4:
+            case Subsonic_Inlet:
                 //Subsonic Inlet
                 uin = Inflow(ui, n, c.Tt, c.Pt, c.a, c.R);
                 block = (F(uin) * (n.transpose())).transpose() * l;
                 ws = fabs(waveSpeed(uin, n)) * l;
                 break;
 
-            case 5:
+            case Supersonic_Inlet:
                 //Supersonic Inlet
                 block = flux(ui, c.uinf, n, 0).transpose() * l;
                 ws = fabs(max(waveSpeed(ui, n), waveSpeed(c.uinf, n))) * l;
                 break;
 
-            case 6:
+            case Supersonic_Outlet:
                 //Supersonic Outlet
                 block = (F(ui) * (n.transpose())).transpose() * l;
                 ws = fabs(waveSpeed(ui, n)) * l;
                 break;
 
+            case Freestream:
             default:
                 //Freestream Test
                 block = flux(ui, c.uinf, n, 0).transpose() * l;
