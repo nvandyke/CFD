@@ -180,6 +180,8 @@
     <ClCompile Include="FiniteVolume.cpp" />
     <ClCompile Include="matrix.cpp" />
     <ClCompile Include="block.cpp" />
+    <ClCompile Include="quad1d.c" />
+    <ClCompile Include="quad2d.c" />
     <ClCompile Include="Tools.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
