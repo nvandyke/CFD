@@ -8,7 +8,7 @@
 using namespace std;
 
 extern "C" {
-    void FVrun(string, string, int);
+    void FVrun(string, string, int, double, double);
 }
 
 
@@ -26,6 +26,8 @@ int main(int argc, char* argv[]) {
     string meshfile = "meshes\\bump0.gri";
     int order = 1;
     int cores = 1;
+    double mach = 0.5;
+    double aoa = 0.0;
 
     while ((++argv)[0]) {
         if (argv[0][0] == '-') {
@@ -52,12 +54,22 @@ int main(int argc, char* argv[]) {
                 cores = atoi((++argv)[0]);
                 std::cout << "cores: " << cores << std::endl;
                 break;
+            case 'M':
+                mach = atof((++argv)[0]);
+                std::cout << "Mach Number: " << mach << std::endl;
+                break;
+            case 'a':
+                aoa = atof((++argv)[0]);
+                std::cout << "Angle of Attack: " << aoa << std::endl;
+                break;
             case 'h':
             default:
                 std::cout << "options are:" << std::endl;
                 std::cout << "\t-i: input file" << std::endl;
                 std::cout << "\t-m: mesh file" << std::endl;
                 std::cout << "\t-o: order" << std::endl;
+                std::cout << "\t-M: Mach Number" << std::endl;
+                std::cout << "\t-a: Angle of Attack" << std::endl;
                 std::cout << "\t-c: num cores" << std::endl;
                 std::cout << "\t-h: help menu" << std::endl;
                 return 1;
@@ -69,7 +81,7 @@ int main(int argc, char* argv[]) {
 
     omp_set_num_threads(cores);
     auto start_time = chrono::high_resolution_clock::now();
-    FVrun(initialfile, meshfile, order);
+    FVrun(initialfile, meshfile, order, mach, aoa);
     auto end_time = chrono::high_resolution_clock::now();
     auto duration = chrono::duration_cast<chrono::seconds>(end_time - start_time);
     std::cout << "took " << duration.count() << "s" << std::endl;

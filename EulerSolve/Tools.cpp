@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <map>
 
+//print the current state and error history to files
 void printResults(Matrix& u, Matrix& e) {
 
     //output state
@@ -21,8 +22,9 @@ void printResults(Matrix& u, Matrix& e) {
 }
 
 
+//calculate real roots to quadratic functions
 Matrix roots(double a, double b, double c) {
-    //calculate real roots to quadratic functions
+    
 
     double discriminant = b * b - 4 * a * c;
     Matrix ans(2, 1);
@@ -35,6 +37,7 @@ Matrix roots(double a, double b, double c) {
 }
 
 
+//maximum of 2 doubles
 double max(double a, double b) {
     if (a > b) {
         return a;
@@ -43,6 +46,8 @@ double max(double a, double b) {
     }
 }
 
+
+//minimum of 2 doubles
 double min(double a, double b) {
     if (a < b) {
         return a;
@@ -51,12 +56,12 @@ double min(double a, double b) {
     }
 }
 
+
+//calculate the wave speed of the state normal to the boundary
 double waveSpeed(Matrix& u, Matrix& n) {
 
     //velocity
-    Matrix v = u.getBlock(0, 1, 1, 2);
-    v(0, 0) = v(0, 0) / u(0, 0);
-    v(0, 1) = v(0, 1) / u(0, 0);
+    Matrix v = u.getBlock(0, 1, 1, 2) / u(0, 0);
 
     //pressure
     double P = (y - 1) * (u(0, 3) - .5 * u(0, 0) * v.dotProduct(v, v));
@@ -73,7 +78,8 @@ double waveSpeed(Matrix& u, Matrix& n) {
 }
 
 
-Matrix flux(Matrix& uL, Matrix& uR, Matrix& n, int R) {
+//calculate the flux across the boundary uL to uR
+Matrix flux(Matrix& uL, Matrix& uR, Matrix& n, Flux R) {
 
     //velocities
     Matrix vL = uL.getBlock(0, 1, 1, 2);
@@ -108,7 +114,7 @@ Matrix flux(Matrix& uL, Matrix& uR, Matrix& n, int R) {
     Matrix FuRdn = F(uR) * nT;
 
     switch (R) {
-    case 1:
+    case HLLE:
     {
         //HLLE
         //HLLE flux calcs
@@ -123,7 +129,7 @@ Matrix flux(Matrix& uL, Matrix& uR, Matrix& n, int R) {
         return fHLLE;
         break;
     }
-    case 2:
+    case Rusanov:
     {
         //Rusanov
         //Rusanov flux max wave speed
@@ -135,7 +141,7 @@ Matrix flux(Matrix& uL, Matrix& uR, Matrix& n, int R) {
         return fRus;
         break;
     }
-    case 0:
+    case Roe:
     default:
     {
         //Roe
@@ -189,11 +195,10 @@ Matrix flux(Matrix& uL, Matrix& uR, Matrix& n, int R) {
 }
 
 
+//flux state
 Matrix F(Matrix& u) {
 
-    Matrix v = u.getBlock(0, 1, 1, 2);
-    v(0, 0) = v(0, 0) / u(0, 0);
-    v(0, 1) = v(0, 1) / u(0, 0);
+    Matrix v = u.getBlock(0, 1, 1, 2) / u(0, 0);
 
     double kinematicenergy = (y - 1) * (u(0, 3) - (0.5 * u(0, 0) * v.dotProduct(v, v)));
 
@@ -215,8 +220,8 @@ Matrix F(Matrix& u) {
 }
 
 
+//construct the vitrual outflow state on a subsonic outlet boundary
 Matrix Outflow(Matrix& u, Matrix& n, double Pb) {
-
 
     //internal state quantities
 
@@ -262,6 +267,7 @@ Matrix Outflow(Matrix& u, Matrix& n, double Pb) {
 }
 
 
+//construct the vitrual inflow state on a subsonic inlet boundary
 Matrix Inflow(Matrix& u, Matrix& n, double Tt, double Pt, double a, double R) {
 
 
@@ -325,6 +331,7 @@ Matrix Inflow(Matrix& u, Matrix& n, double Tt, double Pt, double a, double R) {
 }
 
 
+//compute the flux against an inviscid wall boundary
 Matrix wallFlux(Matrix& u, Matrix& n) {
 
     //velocity
@@ -348,10 +355,13 @@ Matrix wallFlux(Matrix& u, Matrix& n) {
 }
 
 
-
+//default FVstate constructor
 FVstate::FVstate() {
     Order = 1;
 }
+
+
+//fully-defined FVstate contructor
 FVstate::FVstate(int O, FVmesh m, FVConditions c) {
     Order = O;
     u = Matrix(m.A.rows(), 4);
@@ -365,6 +375,7 @@ FVstate::FVstate(int O, FVmesh m, FVConditions c) {
 };
 
 
+//fully-defined FVmesh constructor from mesh file
 FVmesh::FVmesh(string filename) {
     ifstream input;
     input.open(filename);
@@ -524,6 +535,7 @@ FVmesh::FVmesh(string filename) {
 };
 
 
+//convert triangle and edge index into the node 1/node 2 ordered pair
 vector<int> FVmesh::edge2vertex(int t, int e, Block& E) {
 
     int n1, n2;
@@ -573,8 +585,8 @@ vector<int> FVmesh::edge2vertex(int t, int e, Block& E) {
 };
 
 
+//determine the triangle/edge pairs that match up for an internal edge
 Block FVmesh::connectivity(Block& E) {
-    //Block S(E.max(), E.max());
     std::map<std::pair<int, int>, int> S;
 
     int n1, n2;
@@ -619,6 +631,8 @@ Block FVmesh::connectivity(Block& E) {
     return C;
 };
 
+
+//determine the triangle/edge that match up for an boundary edge
 Block FVmesh::boundaryConnectivity(Block& E, Block& boundary, int bgroup) {
 
     Block B2E(boundary.rows(), 3);
@@ -674,8 +688,7 @@ Block FVmesh::boundaryConnectivity(Block& E, Block& boundary, int bgroup) {
 }
 
 
-
-
+//sets the initial conditions
 void FVConditions::set() {
     R = 1;
     Pinf = 1;
@@ -704,6 +717,8 @@ void FVConditions::set() {
     return;
 };
 
+
+//default constructor for the FVConditions class
 FVConditions::FVConditions() {
     M = 0;
     a = 0;
@@ -711,12 +726,16 @@ FVConditions::FVConditions() {
     set();
 };
 
+
+//defined constructor for the FVConditions class
 FVConditions::FVConditions(double Mach, double aoa) {
     M = Mach;
     a = aoa * pi / 180;
     set();
 };
 
+
+//convert triangle and edge index into the XY points
 Matrix FVmesh::pointsFromTE(int t, int e) {
     int n1, n2;
     switch (e) {
@@ -750,8 +769,7 @@ Matrix FVmesh::pointsFromTE(int t, int e) {
 }
 
 
-
-
+//get the normal vector from triangle and edge index
 Matrix FVmesh::normal(int t, int e) {
     Matrix pts = pointsFromTE(t, e);
 
@@ -764,12 +782,15 @@ Matrix FVmesh::normal(int t, int e) {
 }
 
 
+//get the length of the edge from the triangle and edge index
 double FVmesh::length(int t, int e) {
     Matrix pts = pointsFromTE(t, e);
     double length = sqrt((pts(0, 0) - pts(1, 0)) * (pts(0, 0) - pts(1, 0)) + (pts(0, 1) - pts(1, 1)) * (pts(0, 1) - pts(1, 1)));
     return length;
 }
 
+
+//get the midpoint of the edge from the triangle and edge index
 Matrix FVmesh::midpoint(int t, int e) {
     Matrix pts = pointsFromTE(t, e);
 
@@ -781,6 +802,8 @@ Matrix FVmesh::midpoint(int t, int e) {
 
 }
 
+
+//calculate the area of the triangle
 double FVmesh::Area(int t) {
     Matrix pts = pointsFromTE(t, 0);
 
@@ -790,6 +813,7 @@ double FVmesh::Area(int t) {
 }
 
 
+//verify the mesh is imported correctly, there should be zero residual
 double FVmesh::verify() {
     Matrix sum(E.rows(), 2);
     Matrix tot(E.rows(), 1);

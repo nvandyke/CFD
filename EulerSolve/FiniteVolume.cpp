@@ -1,20 +1,18 @@
 #include "Tools.h"
 #include <omp.h>
 
-const double CFL = 0.5;
+const double CFL = 0.75;
 
 
 extern "C" {
-    void FVrun(string, string, int);
+    void FVrun(string, string, int, double, double);
     void cudaStart(int);
     void cudaEnd();
 }
 
 
-void FVrun(string ic, string mesh, int order) {
+void FVrun(string ic, string mesh, int order, double Mach, double angleOfAttack) {
     FVmesh m(mesh);
-    double Mach = 0.5;
-    double angleOfAttack = 0.0;
 
     FVConditions c(Mach, angleOfAttack);
     FVstate u(order, m, c);
@@ -157,7 +155,7 @@ void interioredges(FVstate& u, FVmesh& m, double* R, double* sl) {
             }
             n = m.In.getBlock(i, 0, 1, 2);
             l = m.Il(i, 0);
-            f = flux(uL, uR, n, 0);
+            f = flux(uL, uR, n, Roe);
 
             ws = max(waveSpeed(uL, n), waveSpeed(uR, n)) * l;
 
@@ -232,7 +230,7 @@ void boundaryedges(FVstate& u, FVmesh& m, FVConditions c, double* R, double* sl)
 
             case Supersonic_Inlet:
                 //Supersonic Inlet
-                block = flux(ui, c.uinf, n, 0).transpose() * l;
+                block = flux(ui, c.uinf, n, Roe).transpose() * l;
                 ws = fabs(max(waveSpeed(ui, n), waveSpeed(c.uinf, n))) * l;
                 break;
 
@@ -245,7 +243,7 @@ void boundaryedges(FVstate& u, FVmesh& m, FVConditions c, double* R, double* sl)
             case Freestream:
             default:
                 //Freestream Test
-                block = flux(ui, c.uinf, n, 0).transpose() * l;
+                block = flux(ui, c.uinf, n, Roe).transpose() * l;
                 ws = fabs(max(waveSpeed(ui, n), waveSpeed(c.uinf, n))) * l;
                 break;
 
@@ -291,7 +289,7 @@ Matrix residual(FVstate& u, FVmesh& m, FVConditions& c, Matrix& dt) {
 
     //set time step
     dt = Matrix(u.u.rows(), 4);
-    for (i = 0; i < dt.rows(); ++i) {
+    for (i = 0; i < u.u.rows(); ++i) {
         dt(i, 0) = 2 * CFL / sl[i];
         for (j = 1; j < dt.cols(); ++j) {
             dt(i, j) = dt(i, 0);
