@@ -12,11 +12,9 @@ extern "C" {
 
 
 void FVrun(string ic, string mesh, int order) {
-    //string filename = "mesh.txt";
     FVmesh m(mesh);
     double Mach = 0.5;
     double angleOfAttack = 0.0;
-    //int order = 1;
 
     FVConditions c(Mach, angleOfAttack);
     FVstate u(order, m, c);
@@ -30,12 +28,6 @@ void FVrun(string ic, string mesh, int order) {
 
     Matrix e = FV_solve(u, m, c);
     printResults(u.u, e);
-
-
-
-    //u.Order = 2;
-    //Matrix e2 = FV_solve(u, m, c);
-    //printResults(u.u, e2);
     return;
 }
 
@@ -296,7 +288,6 @@ Matrix residual(FVstate& u, FVmesh& m, FVConditions& c, Matrix& dt) {
     boundaryedges(u, m, c, Rval, sl);
 
     Matrix R(Rval, u.u.rows(), u.u.cols());
-    //Matrix sl(slval, u.u.rows(), 1);
 
     //set time step
     dt = Matrix(u.u.rows(), 4);
