@@ -24,7 +24,7 @@ void printResults(Matrix& u, Matrix& e) {
 
 //calculate real roots to quadratic functions
 Matrix roots(double a, double b, double c) {
-    
+
 
     double discriminant = b * b - 4 * a * c;
     Matrix ans(2, 1);
@@ -355,28 +355,44 @@ Matrix wallFlux(Matrix& u, Matrix& n) {
 }
 
 
-//default FVstate constructor
-FVstate::FVstate() {
+//default State constructor
+State::State() {
     Order = 1;
+    Order_geom = 1;
+    M = 0;
+    a = 0;
+    set();
 }
 
 
-//fully-defined FVstate contructor
-FVstate::FVstate(int O, FVmesh m, FVConditions c) {
+//fully-defined State contructor
+State::State(int O, Mesh m, double Mach, double aoa) {
     Order = O;
-    u = Matrix(m.A.rows(), 4);
-    gradux = Matrix(m.A.rows(), 4);
-    graduy = Matrix(m.A.rows(), 4);
+    mesh = m;
+    M = Mach;
+    a = aoa * pi / 180;
+    set();
+
+    Order_geom = 1;
+
+    u = Matrix(mesh.A.rows(), 4);
+    gradux = Matrix(mesh.A.rows(), 4);
+    graduy = Matrix(mesh.A.rows(), 4);
     for (int i = 0; i < u.rows(); ++i) {
         for (int j = 0; j < u.cols(); ++j) {
-            u(i, j) = c.uinf(0, j);
+            u(i, j) = uinf(0, j);
         }
     }
-};
+}
 
 
-//fully-defined FVmesh constructor from mesh file
-FVmesh::FVmesh(string filename) {
+//default Mesh constructor from mesh file
+Mesh::Mesh() {
+
+}
+
+//fully-defined Mesh constructor from mesh file
+Mesh::Mesh(string filename) {
     ifstream input;
     input.open(filename);
     double double_dummy;
@@ -399,17 +415,18 @@ FVmesh::FVmesh(string filename) {
 
     input >> NB;
 
-    //allocate space to store the info, 
-    B = new Block[NB];
-    Bname = new string[NB];
+    //allocate space to store the info
+
+    vector<Block> B;
+    vector<string> Bname;
 
     int nBFace, nf, totalBFace = 0;
     string Title;
 
     for (int NBi = 0; NBi < NB; NBi++) {
         input >> nBFace >> nf >> Title;
-        B[NBi] = Block(nBFace, nf);
-        Bname[NBi] = Title;
+        B.push_back(Block(nBFace, nf));
+        Bname.push_back(Title);
         for (int j = 0; j < nBFace; ++j) {
             for (int k = 0; k < nf; ++k) {
                 input >> int_dummy;
@@ -438,7 +455,7 @@ FVmesh::FVmesh(string filename) {
 
 
     //I2E
-    I2E = connectivity(E);
+    I2E = connectivity();
 
     int b2erow = 0;
 
@@ -450,20 +467,20 @@ FVmesh::FVmesh(string filename) {
         cout << Bname[i] << endl;
         if (Bname[i] == "Inviscid_Wall") {
             wallType = Inviscid_Wall;
-        } else if(Bname[i] == "Subsonic_Outlet") {
+        } else if (Bname[i] == "Subsonic_Outlet") {
             wallType = Subsonic_Outlet;
-        } else if(Bname[i] == "Subsonic_Inlet") {
+        } else if (Bname[i] == "Subsonic_Inlet") {
             wallType = Subsonic_Inlet;
-        } else if(Bname[i] == "Supersonic_Outlet") {
+        } else if (Bname[i] == "Supersonic_Outlet") {
             wallType = Supersonic_Outlet;
-        } else if(Bname[i] == "Supersonic_Inlet") {
+        } else if (Bname[i] == "Supersonic_Inlet") {
             wallType = Supersonic_Inlet;
         } else {
             wallType = Freestream;
         }
 
 
-        B2Ei = boundaryConnectivity(E, B[i], wallType);
+        B2Ei = boundaryConnectivity(B[i], wallType);
         //B2Ei = boundaryConnectivity(E, B[i], Freestream);
         B2E.setBlock(b2erow, 0, B2Ei);
         b2erow += B2Ei.rows();
@@ -536,7 +553,7 @@ FVmesh::FVmesh(string filename) {
 
 
 //convert triangle and edge index into the node 1/node 2 ordered pair
-vector<int> FVmesh::edge2vertex(int t, int e, Block& E) {
+vector<int> Mesh::edge2vertex(int t, int e) {
 
     int n1, n2;
     vector<int> returnVal;
@@ -586,7 +603,7 @@ vector<int> FVmesh::edge2vertex(int t, int e, Block& E) {
 
 
 //determine the triangle/edge pairs that match up for an internal edge
-Block FVmesh::connectivity(Block& E) {
+Block Mesh::connectivity() {
     std::map<std::pair<int, int>, int> S;
 
     int n1, n2;
@@ -597,7 +614,7 @@ Block FVmesh::connectivity(Block& E) {
 
     for (int t = 0; t < E.rows(); ++t) {
         for (int e = 0; e < 3; ++e) {
-            vector<int> nodes = edge2vertex(t, e, E);
+            vector<int> nodes = edge2vertex(t, e);
             n1 = nodes[0];
             n2 = nodes[1];
             key = std::make_pair(n1, n2);
@@ -633,7 +650,7 @@ Block FVmesh::connectivity(Block& E) {
 
 
 //determine the triangle/edge that match up for an boundary edge
-Block FVmesh::boundaryConnectivity(Block& E, Block& boundary, int bgroup) {
+Block Mesh::boundaryConnectivity(Block& boundary, int bgroup) {
 
     Block B2E(boundary.rows(), 3);
     int B2Ei = 0;
@@ -689,14 +706,14 @@ Block FVmesh::boundaryConnectivity(Block& E, Block& boundary, int bgroup) {
 
 
 //sets the initial conditions
-void FVConditions::set() {
-    R = 1;
+void State::set() {
+    Rinf = 1;
     Pinf = 1;
     if (M < 1) {
         Tt = 1 + (y - 1) / 2 * M * M;
         Pt = pow(Tt, y / (y - 1));
-        c = sqrt(y * R * Tt);
-        p = Pt / (R * Tt);
+        c = sqrt(y * Rinf * Tt);
+        p = Pt / (Rinf * Tt);
 
         v = Matrix(1, 2);
         v(0, 0) = M * c * cos(a);
@@ -718,25 +735,8 @@ void FVConditions::set() {
 };
 
 
-//default constructor for the FVConditions class
-FVConditions::FVConditions() {
-    M = 0;
-    a = 0;
-
-    set();
-};
-
-
-//defined constructor for the FVConditions class
-FVConditions::FVConditions(double Mach, double aoa) {
-    M = Mach;
-    a = aoa * pi / 180;
-    set();
-};
-
-
 //convert triangle and edge index into the XY points
-Matrix FVmesh::pointsFromTE(int t, int e) {
+Matrix Mesh::pointsFromTE(int t, int e) {
     int n1, n2;
     switch (e) {
     case 0:
@@ -770,7 +770,7 @@ Matrix FVmesh::pointsFromTE(int t, int e) {
 
 
 //get the normal vector from triangle and edge index
-Matrix FVmesh::normal(int t, int e) {
+Matrix Mesh::normal(int t, int e) {
     Matrix pts = pointsFromTE(t, e);
 
     Matrix normal(1, 2);
@@ -783,7 +783,7 @@ Matrix FVmesh::normal(int t, int e) {
 
 
 //get the length of the edge from the triangle and edge index
-double FVmesh::length(int t, int e) {
+double Mesh::length(int t, int e) {
     Matrix pts = pointsFromTE(t, e);
     double length = sqrt((pts(0, 0) - pts(1, 0)) * (pts(0, 0) - pts(1, 0)) + (pts(0, 1) - pts(1, 1)) * (pts(0, 1) - pts(1, 1)));
     return length;
@@ -791,7 +791,7 @@ double FVmesh::length(int t, int e) {
 
 
 //get the midpoint of the edge from the triangle and edge index
-Matrix FVmesh::midpoint(int t, int e) {
+Matrix Mesh::midpoint(int t, int e) {
     Matrix pts = pointsFromTE(t, e);
 
     Matrix midpoint(1, 2);
@@ -804,7 +804,7 @@ Matrix FVmesh::midpoint(int t, int e) {
 
 
 //calculate the area of the triangle
-double FVmesh::Area(int t) {
+double Mesh::Area(int t) {
     Matrix pts = pointsFromTE(t, 0);
 
     double A = abs(.5 * (pts(0, 0) * (pts(1, 1) - pts(2, 1)) + pts(1, 0) * (pts(2, 1) - pts(0, 1)) + pts(2, 0) * (pts(0, 1) - pts(1, 1))));
@@ -814,7 +814,7 @@ double FVmesh::Area(int t) {
 
 
 //verify the mesh is imported correctly, there should be zero residual
-double FVmesh::verify() {
+double Mesh::verify() {
     Matrix sum(E.rows(), 2);
     Matrix tot(E.rows(), 1);
     Matrix curSum(1, 2);

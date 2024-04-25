@@ -48,19 +48,7 @@ Matrix Inflow(Matrix& u, Matrix& n, double Tt, double Pt, double a, double R);
 Matrix wallFlux(Matrix& u, Matrix& n);
 
 
-//Finite Volume Storage
-class FVConditions {
-public:
-    double M, a, R, Pinf, Tt, Pt, c, p;
-    Matrix v;
-    Matrix uinf;
-    void set();
-    FVConditions();
-    FVConditions(double Mach, double aoa);
-};
-
-
-class FVmesh {
+class Mesh {
 public:
     Block I2E;
     Block B2E;
@@ -75,13 +63,12 @@ public:
 
     Matrix V;
     Block E;
-    Block* B;
-    string* Bname;
 
-    FVmesh(string filename);
-    Block connectivity(Block& E);
-    vector<int> edge2vertex(int t, int e, Block& E);
-    Block boundaryConnectivity(Block& E, Block& boundary, int bgroup);
+    Mesh();
+    Mesh(string filename);
+    Block connectivity();
+    vector<int> edge2vertex(int t, int e);
+    Block boundaryConnectivity(Block& boundary, int bgroup);
     Matrix normal(int t, int e);
     double length(int t, int e);
     Matrix midpoint(int t, int e);
@@ -93,68 +80,31 @@ public:
 };
 
 
-class FVstate {
-public:
-    Matrix u;
-    int Order;
+class State {
+private:
+    double M, a, Rinf, Pinf, Tt, Pt, c, p;
+    Matrix v;
+    Matrix uinf;
+    Mesh mesh;
+    void set();
     Matrix gradux;
     Matrix graduy;
-    FVstate();
-    FVstate(int O, FVmesh m, FVConditions c);
-};
-
-
-//Finite Volume Methods
-Matrix FV_solve(FVstate& u, FVmesh& m, FVConditions c);
-
-Matrix residual(FVstate& u, FVmesh& m, FVConditions& c, Matrix& dt);
-
-void gradient(FVstate& u, FVmesh& m);
-
-
-//Finite Element Storage
-class FEConditions 
-{
 public:
-	double M, a, R, Pinf, Tt, Pt, c, p;
-	Matrix v;
-	Matrix uinf;
-
-
-
-
-};
-
-
-class FEmesh
-{
-public:
-
-
-};
-
-
-class FEstate
-{
-public:
-	int p;//numerical order of accuracy
-	int q;//geometry order of accuraycy
     Matrix u;
+    int Order, Order_geom;
+    State();
+    State(int O, Mesh m, double Mach, double aoa);
 
-	FEstate() {
-		p = 1;
-		q = 1;
-	};
+    //Finite Volume Methods
+    Matrix FV_solve();
 
-	FEstate(int pp, int qq, const FEmesh& m, const FEConditions& c) {
+    Matrix residual(Matrix& dt);
+    void interioredges(double* R, double* sl);
+    void boundaryedges(double* R, double* sl);
 
-	};
-
-
+    void gradient();
+    void grad_internal(double* gradux, double* graduy);
+    void grad_boundary(double* gradux, double* graduy);
 };
-
-
-//Finite Element Methods
-
 
 #endif
