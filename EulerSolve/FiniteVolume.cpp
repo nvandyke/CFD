@@ -1,23 +1,21 @@
 #include "Tools.h"
 #include <omp.h>
 
-const double CFL = 0.75;
-
 
 extern "C" {
-    void FVrun(string, string, int, double, double);
+    void FVrun(std::string, std::string, int, double, double);
     void cudaStart(int);
     void cudaEnd();
 }
 
 
-void FVrun(string ic, string mesh, int order, double Mach, double angleOfAttack) {
+void FVrun(std::string ic, std::string mesh, int order, double Mach, double angleOfAttack) {
     Mesh m(mesh);
 
     State u(order, m, Mach, angleOfAttack);
 
     if (ic != "") {
-        ifstream inputfile;
+        std::ifstream inputfile;
         inputfile.open(ic);
         inputfile >> u.u;
         inputfile.close();
@@ -30,11 +28,6 @@ void FVrun(string ic, string mesh, int order, double Mach, double angleOfAttack)
 
 
 Matrix State::FV_solve() {
-    //constants
-    double tol = 1e-7;
-    double max = 1 / tol;
-    int MaxIter = 100000;
-
     //initialize
     cudaStart(u.size());
     Matrix e(MaxIter + 1, 1);
@@ -42,52 +35,26 @@ Matrix State::FV_solve() {
     Matrix R(u.rows(), u.cols());
     int iter = 0;
 
-    //iterate
-    if (Order == 1) {
+    //higher-order initialize
+    State ufe(Order, mesh, M, a);
+    Matrix dtdummy(u.rows(), u.cols());
+    Matrix R2(u.rows(), u.cols());
+    Matrix R3(u.rows(), u.cols());
+    Matrix R4(u.rows(), u.cols());
+    Matrix bigR(u.rows(), u.cols());
 
-        for (iter = 0; iter < MaxIter; ++iter) {
-            R = residual(dt);
+    //iterate
+    for (iter = 0; iter < MaxIter; ++iter) {
+        R = residual(dt);
+        
+        if (Order == 1) {
             u = u - dt % R;
             //u = u - dt.multInPlace(R);
-            e(iter, 0) = R.max();
-            cout << e(iter, 0) << endl;
-            if (e(iter, 0) < tol)
-                break;
-            if (e(iter, 0) > max || isnan(e(iter, 0)))
-                break;
-            if (iter % 1000 == 0)
-                printResults(u, e);
-        }
-    } else if (Order == 2) {
-
-        State ufe(2, mesh, M, a);
-        Matrix dtdummy(u.rows(), u.cols());
-
-        for (iter = 0; iter < MaxIter; ++iter) {
-            R = residual(dt);
+        } else if (Order == 2) {
             ufe.u = u - dt % R;
-            R = ufe.residual(dtdummy);
-            u = (u + ufe.u - dt % R) * .5;
-            e(iter, 0) = R.max();
-            cout << e(iter, 0) << endl;
-            if (e(iter, 0) < tol)
-                break;
-            if (e(iter, 0) > max || isnan(e(iter, 0)))
-                break;
-            if (iter % 1000 == 0)
-                printResults(u, e);
-        }
-    } else if (Order < 5) {
-
-        State ufe(2, mesh, M, a);
-        Matrix dtdummy(u.rows(), u.cols());
-        Matrix R2(u.rows(), u.cols());
-        Matrix R3(u.rows(), u.cols());
-        Matrix R4(u.rows(), u.cols());
-        Matrix bigR(u.rows(), u.cols());
-
-        for (iter = 0; iter < MaxIter; ++iter) {
-            R = residual(dt);
+            R2 = ufe.residual(dtdummy);
+            u = (u + ufe.u - dt % R2) * .5;
+        } else if (Order < 5) {
             ufe.u = u - .5 * (dt % R);
             R2 = ufe.residual(dtdummy);
             ufe.u = u - .5 * (dt % R2);
@@ -96,18 +63,20 @@ Matrix State::FV_solve() {
             R4 = ufe.residual(dtdummy);
             bigR = R + 2 * (R2 + R3) + R4;
             u = u - (dt % bigR) / 6;
-            e(iter, 0) = R.max();
-            cout << e(iter, 0) << endl;
-            if (e(iter, 0) < tol)
-                break;
-            if (e(iter, 0) > max || isnan(e(iter, 0)))
-                break;
-            if (iter % 1000 == 0)
-                printResults(u, e);
         }
+
+        e(iter, 0) = std::max(R.max(), -R.min());
+        std::cout << e(iter, 0) << std::endl;
+        if (e(iter, 0) < tol)
+            break;
+        if (e(iter, 0) > max || isnan(e(iter, 0)))
+            break;
+        if (iter % 1000 == 0)
+            printResults(u, e);
     }
+
     cudaEnd();
-    cout << "Stopped at iteration " << iter << endl;
+    std::cout << "Stopped at iteration " << iter << std::endl;
     Matrix retVal(int(iter) + 1, 1);
     retVal = e.getBlock(0, 0, iter + 1, 1);
     return retVal;
@@ -154,9 +123,9 @@ void State::interioredges(double* R, double* sl) {
             }
             n = mesh.In.getBlock(i, 0, 1, 2);
             l = mesh.Il(i, 0);
-            f = flux(uL, uR, n, Roe);
+            f = flux(uL, uR, n, flux_val);
 
-            ws = max(waveSpeed(uL, n), waveSpeed(uR, n)) * l;
+            ws = std::max(waveSpeed(uL, n), waveSpeed(uR, n)) * l;
 
             fTl = f.transpose() * l;
 #pragma omp critical 
@@ -229,8 +198,8 @@ void State::boundaryedges(double* R, double* sl) {
 
             case Supersonic_Inlet:
                 //Supersonic Inlet
-                block = flux(ui, uinf, n, Roe).transpose() * l;
-                ws = fabs(max(waveSpeed(ui, n), waveSpeed(uinf, n))) * l;
+                block = flux(ui, uinf, n, flux_val).transpose() * l;
+                ws = fabs(std::max(waveSpeed(ui, n), waveSpeed(uinf, n))) * l;
                 break;
 
             case Supersonic_Outlet:
@@ -242,8 +211,8 @@ void State::boundaryedges(double* R, double* sl) {
             case Freestream:
             default:
                 //Freestream Test
-                block = flux(ui, uinf, n, Roe).transpose() * l;
-                ws = fabs(max(waveSpeed(ui, n), waveSpeed(uinf, n))) * l;
+                block = flux(ui, uinf, n, flux_val).transpose() * l;
+                ws = fabs(std::max(waveSpeed(ui, n), waveSpeed(uinf, n))) * l;
                 break;
 
 

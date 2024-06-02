@@ -5,15 +5,14 @@
 #include <chrono>
 #include <string>
 
-using namespace std;
 
 extern "C" {
-    void FVrun(string, string, int, double, double);
+    void FVrun(std::string, std::string, int, double, double);
 }
 
 
-inline bool exists(const string& name) {
-    ifstream f(name.c_str());
+inline bool exists(const std::string& name) {
+    std::ifstream f(name.c_str());
     return f.good();
 }
 
@@ -22,8 +21,8 @@ inline bool exists(const string& name) {
 int main(int argc, char* argv[]) {
     std::cout.precision(15);
     std::cout << std::fixed;
-    string initialfile = "";
-    string meshfile = "meshes\\bump0.gri";
+    std::string initialfile = "";
+    std::string meshfile = "meshes\\bump0.gri";
     int order = 1;
     int cores = 1;
     double mach = 0.5;
@@ -80,10 +79,10 @@ int main(int argc, char* argv[]) {
     }
 
     omp_set_num_threads(cores);
-    auto start_time = chrono::high_resolution_clock::now();
+    auto start_time = std::chrono::high_resolution_clock::now();
     FVrun(initialfile, meshfile, order, mach, aoa);
-    auto end_time = chrono::high_resolution_clock::now();
-    auto duration = chrono::duration_cast<chrono::seconds>(end_time - start_time);
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time);
     std::cout << "took " << duration.count() << "s" << std::endl;
 
     std::cin.get();

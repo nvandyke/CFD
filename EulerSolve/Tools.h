@@ -9,9 +9,8 @@
 #include "matrix.h"
 #include "block.h"
 
-using namespace std;
-const double y = 1.4;
 const double pi = 3.14159265358979323846;
+const double y = 1.3;
 
 enum BoundaryCondition {
     Inviscid_Wall,
@@ -32,12 +31,9 @@ void printResults(Matrix& u, Matrix& e);
 
 Matrix roots(double a, double b, double c);
 
-double max(double a, double b);
-double min(double a, double b);
-
 double waveSpeed(Matrix& u, Matrix& n);
 
-Matrix flux(Matrix& uL, Matrix& uR, Matrix& n, Flux R);
+Matrix flux(Matrix& uL, Matrix& uR, Matrix& n, int R);
 
 Matrix F(Matrix& u);
 
@@ -65,9 +61,9 @@ public:
     Block E;
 
     Mesh();
-    Mesh(string filename);
+    Mesh(std::string filename);
     Block connectivity();
-    vector<int> edge2vertex(int t, int e);
+    std::vector<int> edge2vertex(int t, int e);
     Block boundaryConnectivity(Block& boundary, int bgroup);
     Matrix normal(int t, int e);
     double length(int t, int e);
@@ -89,6 +85,11 @@ private:
     void set();
     Matrix gradux;
     Matrix graduy;
+    const double CFL = 0.5;
+    double tol = 1e-7;
+    double max = 1 / tol;
+    int MaxIter = 100000;
+    int flux_val = Roe;
 public:
     Matrix u;
     int Order, Order_geom;

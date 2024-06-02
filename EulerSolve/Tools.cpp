@@ -7,17 +7,17 @@
 void printResults(Matrix& u, Matrix& e) {
 
     //output state
-    ofstream output1;
+    std::ofstream output1;
     output1.open("u.txt");
     output1.precision(15);
     output1 << std::fixed;
-    output1 << u << endl;
+    output1 << u << std::endl;
     output1.close();
 
     //output residual history
-    ofstream output2;
+    std::ofstream output2;
     output2.open("e.txt");
-    output2 << e << endl;
+    output2 << e << std::endl;
     output2.close();
 }
 
@@ -34,26 +34,6 @@ Matrix roots(double a, double b, double c) {
     ans(1, 0) = (-b - discriminant_sqrt) / (2 * a);
 
     return ans;
-}
-
-
-//maximum of 2 doubles
-double max(double a, double b) {
-    if (a > b) {
-        return a;
-    } else {
-        return b;
-    }
-}
-
-
-//minimum of 2 doubles
-double min(double a, double b) {
-    if (a < b) {
-        return a;
-    } else {
-        return b;
-    }
 }
 
 
@@ -79,7 +59,7 @@ double waveSpeed(Matrix& u, Matrix& n) {
 
 
 //calculate the flux across the boundary uL to uR
-Matrix flux(Matrix& uL, Matrix& uR, Matrix& n, Flux R) {
+Matrix flux(Matrix& uL, Matrix& uR, Matrix& n, int R) {
 
     //velocities
     Matrix vL = uL.getBlock(0, 1, 1, 2);
@@ -118,8 +98,8 @@ Matrix flux(Matrix& uL, Matrix& uR, Matrix& n, Flux R) {
     {
         //HLLE
         //HLLE flux calcs
-        double smax = max(max(0.0, vL.dotProduct(vL, n) + cL), max(0.0, vR.dotProduct(vR, n) + cR));
-        double smin = min(min(0.0, vL.dotProduct(vL, n) - cL), min(0.0, vR.dotProduct(vR, n) - cR));
+        double smax = std::max(std::max(0.0, vL.dotProduct(vL, n) + cL), std::max(0.0, vR.dotProduct(vR, n) + cR));
+        double smin = std::min(std::min(0.0, vL.dotProduct(vL, n) - cL), std::min(0.0, vR.dotProduct(vR, n) - cR));
 
 
         Matrix fHLLE(4, 1);
@@ -133,7 +113,7 @@ Matrix flux(Matrix& uL, Matrix& uR, Matrix& n, Flux R) {
     {
         //Rusanov
         //Rusanov flux max wave speed
-        double smaxRus = max(sL, sR);
+        double smaxRus = std::max(sL, sR);
 
 
         Matrix fRus(4, 1);
@@ -392,8 +372,8 @@ Mesh::Mesh() {
 }
 
 //fully-defined Mesh constructor from mesh file
-Mesh::Mesh(string filename) {
-    ifstream input;
+Mesh::Mesh(std::string filename) {
+    std::ifstream input;
     input.open(filename);
     double double_dummy;
     int int_dummy;
@@ -417,11 +397,11 @@ Mesh::Mesh(string filename) {
 
     //allocate space to store the info
 
-    vector<Block> B;
-    vector<string> Bname;
+    std::vector<Block> B;
+    std::vector<std::string> Bname;
 
     int nBFace, nf, totalBFace = 0;
-    string Title;
+    std::string Title;
 
     for (int NBi = 0; NBi < NB; NBi++) {
         input >> nBFace >> nf >> Title;
@@ -464,7 +444,7 @@ Mesh::Mesh(string filename) {
     Block B2Ei = Block(1, 3);
     int wallType;
     for (int i = 0; i < NB; i++) {
-        cout << Bname[i] << endl;
+        //std::cout << Bname[i] << std::endl;
         if (Bname[i] == "Inviscid_Wall") {
             wallType = Inviscid_Wall;
         } else if (Bname[i] == "Subsonic_Outlet") {
@@ -481,7 +461,7 @@ Mesh::Mesh(string filename) {
 
 
         B2Ei = boundaryConnectivity(B[i], wallType);
-        //B2Ei = boundaryConnectivity(E, B[i], Freestream);
+        //B2Ei = boundaryConnectivity(B[i], Freestream);
         B2E.setBlock(b2erow, 0, B2Ei);
         b2erow += B2Ei.rows();
     }
@@ -534,29 +514,29 @@ Mesh::Mesh(string filename) {
     }
 
 
-    cout << filename << " error: " << verify() << endl << endl;
+    std::cout << filename << " error: " << verify() << std::endl << std::endl;
     /*
-    cout << "V" << endl << V << endl << endl;
-    cout << "E" << endl << E << endl << endl;
-    cout << "I2E" << endl << I2E << endl << endl;
-    cout << "B2E" << endl << B2E << endl << endl;
-    cout << "In" << endl << In << endl << endl;
-    cout << "Il" << endl << Il << endl << endl;
-    cout << "Ir" << endl << Ir << endl << endl;
-    cout << "Bn" << endl << Bn << endl << endl;
-    cout << "Bl" << endl << Bl << endl << endl;
-    cout << "Br" << endl << Br << endl << endl;
-    cout << "A" << endl << A << endl << endl;
-    cout << "C" << endl << C << endl << endl;
+    std::cout << "V" << std::endl << V << std::endl << std::endl;
+    std::cout << "E" << std::endl << E << std::endl << std::endl;
+    std::cout << "I2E" << std::endl << I2E << std::endl << std::endl;
+    std::cout << "B2E" << std::endl << B2E << std::endl << std::endl;
+    std::cout << "In" << std::endl << In << std::endl << std::endl;
+    std::cout << "Il" << std::endl << Il << std::endl << std::endl;
+    std::cout << "Ir" << std::endl << Ir << std::endl << std::endl;
+    std::cout << "Bn" << std::endl << Bn << std::endl << std::endl;
+    std::cout << "Bl" << std::endl << Bl << std::endl << std::endl;
+    std::cout << "Br" << std::endl << Br << std::endl << std::endl;
+    std::cout << "A" << std::endl << A << std::endl << std::endl;
+    std::cout << "C" << std::endl << C << std::endl << std::endl;
     */
 };
 
 
 //convert triangle and edge index into the node 1/node 2 ordered pair
-vector<int> Mesh::edge2vertex(int t, int e) {
+std::vector<int> Mesh::edge2vertex(int t, int e) {
 
     int n1, n2;
-    vector<int> returnVal;
+    std::vector<int> returnVal;
 
     switch (e) {
     case (0):
@@ -608,19 +588,19 @@ Block Mesh::connectivity() {
 
     int n1, n2;
     int count = 0;
-    vector<vector<int>> D;
+    std::vector<std::vector<int>> D;
     std::pair<int, int> key;
     std::pair<int, int> keyInv;
 
     for (int t = 0; t < E.rows(); ++t) {
         for (int e = 0; e < 3; ++e) {
-            vector<int> nodes = edge2vertex(t, e);
+            std::vector<int> nodes = edge2vertex(t, e);
             n1 = nodes[0];
             n2 = nodes[1];
             key = std::make_pair(n1, n2);
             keyInv = std::make_pair(n2, n1);
             if (S[key] > 0) {
-                vector<int> Di;
+                std::vector<int> Di;
                 Di.push_back(S[key] - 1);
                 Di.push_back(t);
                 Di.push_back(S[keyInv] - 1);
@@ -659,12 +639,12 @@ Block Mesh::boundaryConnectivity(Block& boundary, int bgroup) {
 
         int n1 = int(boundary(i, 0));
         int n2 = int(boundary(i, 1));
-        vector<vector<int>> saved;
+        std::vector<std::vector<int>> saved;
 
         for (int j = 0; j < E.rows(); j++) {
             for (int k = 0; k < 3; k++) {
                 if (E(j, k) == n1) {
-                    vector<int> here;
+                    std::vector<int> here;
                     here.push_back(j);
                     here.push_back(k);
                     saved.push_back(here);
@@ -686,7 +666,7 @@ Block Mesh::boundaryConnectivity(Block& boundary, int bgroup) {
                     } else if (saved[j][1] == 2 and k == 0 or saved[j][1] == 0 and k == 2) {
                         face = 1;
                     } else {
-                        cout << "You fucked up: " << bgroup << endl;
+                        std::cout << "You fucked up: " << bgroup << std::endl;
                     }
 
                     B2E(B2Ei, 0) = saved[j][0];
@@ -752,7 +732,7 @@ Matrix Mesh::pointsFromTE(int t, int e) {
         n2 = E(t, 1) - 1;
         break;
     default:
-        cout << "poop" << endl;
+        std::cout << "poop" << std::endl;
         assert(false);
         break;
     }

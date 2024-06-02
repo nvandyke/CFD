@@ -529,6 +529,16 @@ double Matrix::max() {
     return max;
 }
 
+double Matrix::min() {
+    double min = p[0];
+    for (int i = 0; i < size(); i++) {
+        if (p[i] < min) {
+            min = p[i];
+        }
+    }
+    return min;
+}
+
 int Matrix::size() {
     return rows_ * cols_;
 }

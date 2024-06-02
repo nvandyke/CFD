@@ -52,6 +52,7 @@ public:
     void setBlock(int i, int j, Matrix& m);
     const Matrix getBlock(int i, int j, int x, int y) const;
     double max();
+    double min();
     int size();
     Matrix multInPlace(Matrix& m);
 
