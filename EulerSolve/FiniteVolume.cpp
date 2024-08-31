@@ -10,6 +10,10 @@ extern "C" {
 
 
 void FVrun(std::string ic, std::string mesh, int order, double Mach, double angleOfAttack) {
+    //cudaStart(9);
+
+    //cudaEnd();
+    //return;
     Mesh m(mesh);
 
     State u(order, m, Mach, angleOfAttack);

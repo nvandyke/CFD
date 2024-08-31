@@ -45,6 +45,15 @@ Matrix wallFlux(Matrix& u, Matrix& n);
 
 
 class Mesh {
+private:
+    int* n_1d;
+    double* x_1d;
+    double* w_1d;
+
+    int* n_2d;
+    double* x_2d;
+    double* w_2d;
+
 public:
     Block I2E;
     Block B2E;
@@ -70,7 +79,11 @@ public:
     Matrix midpoint(int t, int e);
     Matrix pointsFromTE(int t, int e);
     double Area(int t);
+    void Jacobians1d(int elem);
+    double* RefEdge2Elem(int edge);
     double verify();
+    void quad1d(int order);
+    void quad2d(int order);
 
 
 };
@@ -106,6 +119,9 @@ public:
     void gradient();
     void grad_internal(double* gradux, double* graduy);
     void grad_boundary(double* gradux, double* graduy);
+
+    //Finite Element Methods
+    Matrix FE_solve();
 };
 
 #endif

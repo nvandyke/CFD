@@ -1,4 +1,15 @@
-//#include "Tools.h"
+#include "Tools.h"
+#include <omp.h>
+
+void FE_run() {
+
+
+    return;
+}
+
+Matrix State::FE_solve() {
+    return Matrix();
+}
 //
 //VectorXd FE_solve(FEstate& u, const FEmesh& m, const FEConditions& c)
 //{

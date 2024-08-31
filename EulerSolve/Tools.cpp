@@ -2,6 +2,7 @@
 #include "matrix.h"
 #include <assert.h>
 #include <map>
+#include <vector>
 
 //print the current state and error history to files
 void printResults(Matrix& u, Matrix& e) {
@@ -433,6 +434,9 @@ Mesh::Mesh(std::string filename) {
 
     input.close();
 
+    //basis points and weights for DG-FEM
+    quad1d(0);
+    quad2d(0);
 
     //I2E
     I2E = connectivity();
@@ -472,6 +476,8 @@ Mesh::Mesh(std::string filename) {
     Il = Matrix(I2E.rows(), 1);
     Ir = Matrix(I2E.rows(), 2);
 
+
+    //internal edges
     for (int i = 0; i < I2E.rows(); i++) {
         Matrix norm = normal(I2E(i, 0), I2E(i, 1));
         In.setBlock(i, 0, norm);
@@ -491,6 +497,8 @@ Mesh::Mesh(std::string filename) {
     Bl = Matrix(B2E.rows(), 1);
     Br = Matrix(B2E.rows(), 2);
 
+
+    //boundary edges
     for (int i = 0; i < B2E.rows(); i++) {
         Matrix norm = normal(B2E(i, 0), B2E(i, 1));
         Bn.setBlock(i, 0, norm);
@@ -819,3 +827,39 @@ double Mesh::verify() {
     return tot.max();
 
 }
+
+
+//compute Jacobaian matricies for all points of integration
+void Mesh::Jacobians1d(int elem) {
+    int p = 0;
+    int q = 0;
+    int nun_quadrature_points = (q + 1) * (q + 2) / 2;
+    int order = 2 * (p + q);
+
+    std::vector<Matrix> J1d;
+
+    for (int i = 0; i < *n_1d; ++i) {
+        J1d.push_back(Matrix(2, 2));
+    }
+
+
+
+
+}
+
+/*
+double* Mesh::RefEdge2Elem(int edge) {
+    Matrix xy(*n_1d, 2);
+    switch (edge) {
+    case 1:
+        //xy.setBlock(0,0,)
+        break;
+    case 2:
+        break;
+    case 3:
+        break;
+    default:
+        break;
+    }
+}
+*/
