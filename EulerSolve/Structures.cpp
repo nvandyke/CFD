@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <iostream>
 #include <fstream>
+#include <cstring>
 
 using namespace std;
 
@@ -27,9 +28,14 @@ vec::vec(int i, int j) {
 }
 
 vec::vec(const vec& rhs) {
-	sizeI = rhs.sizeI;
-	sizeJ = rhs.sizeJ;
-	totalSize = rhs.totalSize;
+	
+	sizeI = rhs.rows();
+	sizeJ = rhs.cols();
+	totalSize = sizeI * sizeJ;
+	if (data) {
+		delete[] data;
+	}
+	data = new double[totalSize];
 	std::memcpy(data, rhs.data, rhs.totalSize * sizeof(double));
 	/*for (int i = 0; i < sizeI; i++) {
 		for (int j = 0; j < sizeJ;j++){
@@ -39,9 +45,7 @@ vec::vec(const vec& rhs) {
 }
 
 vec::~vec() {
-	if (data) {
-		delete[] data;
-	}
+	
 }
 
 double vec::dot(const vec& v) {
@@ -59,7 +63,6 @@ double vec::dot(const vec& v) {
 }
 
 void vec::print(ostream& os){
-	int index = 0;
 	for (int i = 0; i < sizeI; i++) {
 		for (int j = 0; j < sizeJ; j++) {
 			os << this->getAt(i,j) << " ";
@@ -89,52 +92,47 @@ const double vec::getAt(int i, int j) const {
 }
 
 vec& vec::operator+(const vec& b){
-	vec v = *this;
 	assert(sizeCheck(*this, b));
 	for (int i = 0; i < sizeI; i++) {
 		for (int j = 0; j < sizeJ; j++) {
-			v.setAt(i, j, this->getAt(i, j) + b.getAt(i, j));
+			this->setAt(i, j, this->getAt(i, j) + b.getAt(i, j));
 
 		}
 	}
-	return v;
+	return *this;
 }
 
-vec& vec::operator-(const vec& b) {
-	vec v = *this;
+vec& vec::operator-(const vec& b){
 	assert(sizeCheck(*this, b));
 	for (int i = 0; i < sizeI; i++) {
 		for (int j = 0; j < sizeJ; j++) {
-			v.setAt(i, j, this->getAt(i, j) - b.getAt(i, j));
+			this->setAt(i, j, this->getAt(i, j) - b.getAt(i, j));
 
 		}
 	}
-	return v;
+	return *this;
 }
 
-vec& vec::operator*(const vec& b) {
-	vec v = *this;
+vec& vec::operator*(const vec& b){
 	assert(sizeCheck(*this, b));
 	for (int i = 0; i < sizeI; i++) {
 		for (int j = 0; j < sizeJ; j++) {
-			v.setAt(i, j, this->getAt(i, j) * b.getAt(i, j));
+			this->setAt(i, j, this->getAt(i, j) * b.getAt(i, j));
 
 		}
 	}
-	return v;
+	return *this;
 }
 
-vec& vec::operator/(const vec& b) {
-	vec v = *this;
+vec& vec::operator/(const vec& b){
 	assert(sizeCheck(*this, b));
 	for (int i = 0; i < sizeI; i++) {
 		for (int j = 0; j < sizeJ; j++) {
-			assert(b.getAt(i, j) != 0);
-			v.setAt(i, j, this->getAt(i, j) / b.getAt(i, j));
+			this->setAt(i, j, this->getAt(i, j) / b.getAt(i, j));
 
 		}
 	}
-	return v;
+	return *this;
 }
 
 vec& vec::operator=(const vec& rhs) {
@@ -173,52 +171,43 @@ vec& vec::operator=(const vec& rhs) {
 
 
 vec& vec::operator+(const double& b) {
-	vec v = *this;
-
 	for (int i = 0; i < sizeI; i++) {
 		for (int j = 0; j < sizeJ; j++) {
-			v.setAt(i, j, this->getAt(i, j) + b);
+			this->setAt(i, j, this->getAt(i, j) + b);
 
 		}
 	}
-	return v;
+	return *this;
 }
 
 vec& vec::operator-(const double& b) {
-	vec v = *this;
-
 	for (int i = 0; i < sizeI; i++) {
 		for (int j = 0; j < sizeJ; j++) {
-			v.setAt(i, j, this->getAt(i, j) - b);
+			this->setAt(i, j, this->getAt(i, j) - b);
 
 		}
 	}
-	return v;
+	return *this;
 }
 
 vec& vec::operator*(const double& b) {
-	vec v = *this;
-
 	for (int i = 0; i < sizeI; i++) {
 		for (int j = 0; j < sizeJ; j++) {
-			v.setAt(i, j, this->getAt(i, j) * b);
+			this->setAt(i, j, this->getAt(i, j) * b);
 
 		}
 	}
-	return v;
+	return *this;
 }
 
 vec& vec::operator/(const double& b) {
-	vec v = *this;
-
 	for (int i = 0; i < sizeI; i++) {
 		for (int j = 0; j < sizeJ; j++) {
-			assert(b != 0);
-			v.setAt(i, j, this->getAt(i, j) / b);
+			this->setAt(i, j, this->getAt(i, j) / b);
 
 		}
 	}
-	return v;
+	return *this;
 }
 
 vec vec::transpose() {

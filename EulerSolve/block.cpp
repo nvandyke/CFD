@@ -183,7 +183,6 @@ int Block::cols() const {
 }
 
 void Block::print(std::ostream& os) {
-    int index = 0;
     for (int i = 0; i < rows_; i++) {
         for (int j = 0; j < cols_; j++) {
             os << p[i * cols_ + j] << " ";

@@ -1,11 +1,12 @@
 #include "Tools.h"
 #include <omp.h>
+#include <cstring>
 
 
 extern "C" {
     void FVrun(std::string, std::string, int, double, double);
-    void cudaStart(int);
-    void cudaEnd();
+    //void cudaStart(int);
+    //void cudaEnd();
 }
 
 
@@ -33,7 +34,7 @@ void FVrun(std::string ic, std::string mesh, int order, double Mach, double angl
 
 Matrix State::FV_solve() {
     //initialize
-    cudaStart(u.size());
+    //cudaStart(u.size());
     Matrix e(MaxIter + 1, 1);
     Matrix dt(u.rows(), u.cols());
     Matrix R(u.rows(), u.cols());
@@ -79,7 +80,7 @@ Matrix State::FV_solve() {
             printResults(u, e);
     }
 
-    cudaEnd();
+    //cudaEnd();
     std::cout << "Stopped at iteration " << iter << std::endl;
     Matrix retVal(int(iter) + 1, 1);
     retVal = e.getBlock(0, 0, iter + 1, 1);

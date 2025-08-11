@@ -491,7 +491,6 @@ int Matrix::cols() const {
 }
 
 void Matrix::print(std::ostream& os) {
-    int index = 0;
     for (int i = 0; i < rows_; i++) {
         for (int j = 0; j < cols_; j++) {
             os << p[i * cols_ + j] << " ";
@@ -555,12 +554,12 @@ Matrix operator%(Matrix& m1, Matrix& m2) {
 }
 
 extern "C" {
-    void wrapper(double*, double*, double*, int);
+    //void wrapper(double*, double*, double*, int);
 }
 
 Matrix Matrix::multInPlace(Matrix& m) {
     assert(m.size() == size());
     Matrix ans(rows_, cols_);
-    wrapper(p, m.p, ans.p, size());
+    //wrapper(p, m.p, ans.p, size());
     return ans;
 }

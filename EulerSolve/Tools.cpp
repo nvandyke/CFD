@@ -418,7 +418,7 @@ Mesh::Mesh(std::string filename) {
 
     }
 
-    int Ne0 = 0;
+    //int Ne0 = 0;
 
     input >> int_dummy >> int_dummy >> Title;
 
@@ -435,8 +435,8 @@ Mesh::Mesh(std::string filename) {
     input.close();
 
     //basis points and weights for DG-FEM
-    quad1d(0);
-    quad2d(0);
+    //quad1d(0);
+    //quad2d(0);
 
     //I2E
     I2E = connectivity();
@@ -662,16 +662,16 @@ Block Mesh::boundaryConnectivity(Block& boundary, int bgroup) {
             }
         }
 
-        for (int j = 0; j < saved.size(); j++) {
+        for (int j = 0; j < int(saved.size()); j++) {
             for (int k = 0; k < 3; k++) {
 
                 if (E(saved[j][0], k) == n2) {
                     int face = -1;
-                    if (saved[j][1] == 0 and k == 1 or saved[j][1] == 1 and k == 0) {
+                    if ((saved[j][1] == 0 and k == 1) or (saved[j][1] == 1 and k == 0)) {
                         face = 2;
-                    } else if (saved[j][1] == 1 and k == 2 or saved[j][1] == 2 and k == 1) {
+                    } else if ((saved[j][1] == 1 and k == 2) or (saved[j][1] == 2 and k == 1)) {
                         face = 0;
-                    } else if (saved[j][1] == 2 and k == 0 or saved[j][1] == 0 and k == 2) {
+                    } else if ((saved[j][1] == 2 and k == 0) or (saved[j][1] == 0 and k == 2)) {
                         face = 1;
                     } else {
                         std::cout << "You fucked up: " << bgroup << std::endl;
@@ -831,10 +831,10 @@ double Mesh::verify() {
 
 //compute Jacobaian matricies for all points of integration
 void Mesh::Jacobians1d(int elem) {
-    int p = 0;
-    int q = 0;
-    int nun_quadrature_points = (q + 1) * (q + 2) / 2;
-    int order = 2 * (p + q);
+    //int p = 0;
+    //int q = 0;
+    //int num_quadrature_points = (q + 1) * (q + 2) / 2;
+    //int order = 2 * (p + q);
 
     std::vector<Matrix> J1d;
 

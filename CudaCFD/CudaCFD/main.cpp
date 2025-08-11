@@ -22,7 +22,7 @@ int main(int argc, char* argv[]) {
     std::cout.precision(15);
     std::cout << std::fixed;
     std::string initialfile = "";
-    std::string meshfile = "meshes\\bump0.gri";
+    std::string meshfile = "meshes/bump0.gri";
     int order = 1;
     int cores = 1;
     double mach = 0.5;

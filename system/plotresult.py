@@ -64,9 +64,9 @@ def ploterror(error):
     plt.xlabel('Iteration')
     plt.ylabel('Residual')
 
-resultfile = 'bump4solution\\u2.txt'
-errorfile = 'bump4solution\\e2.txt'
-meshfile = 'meshes\\bump4.gri'
+resultfile = 'bump4solution/u2.txt'
+errorfile = 'bump4solution/e2.txt'
+meshfile = 'meshes/bump4.gri'
 
 mesh = readgri(meshfile)
 result = readresult(resultfile)
