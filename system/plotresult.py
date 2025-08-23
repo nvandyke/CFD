@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.tri as tri
 from matplotlib.collections import PatchCollection
+import argparse
 
 #read the state file and return the values
 def readresult(filename):
@@ -64,25 +65,34 @@ def ploterror(error):
     plt.xlabel('Iteration')
     plt.ylabel('Residual')
 
-resultfile = 'bump4solution/u2.txt'
-errorfile = 'bump4solution/e2.txt'
-meshfile = 'meshes/bump4.gri'
+def main(args):
+    mesh = readgri(args.meshfile)
+    result = readresult(args.resultfile)
+    error = readerror(args.errorfile)
 
-mesh = readgri(meshfile)
-result = readresult(resultfile)
-error = readerror(errorfile)
+    speed = np.sqrt((result[:,1]/result[:,0])**2 + (result[:,2]/result[:,0])**2)
+    y = 1.4
+    Pressure = (y-1)*(result[:,3] - .5 * result[:,0]*speed**2)
+    c = np.sqrt(y*Pressure/result[:,0])
+    Mach = speed/c
 
-speed = np.sqrt((result[:,1]/result[:,0])**2 + (result[:,2]/result[:,0])**2)
-y = 1.4
-Pressure = (y-1)*(result[:,3] - .5 * result[:,0]*speed**2)
-c = np.sqrt(y*Pressure/result[:,0])
-Mach = speed/c
+    ploterror(error)
+    plotPDE(mesh,Mach)
+    plt.show()
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        prog='plotResult',
+        description='plots solution to gri file and error history')
+                                     
+    parser.add_argument('meshfile')
+    parser.add_argument('resultfile')
+    parser.add_argument('errorfile')
+
+    args = parser.parse_args()
+
+    main(args)
 
 
 
-#print(mesh)
-#print(result)
-ploterror(error)
-plotPDE(mesh,Mach)
-plt.show()
 
