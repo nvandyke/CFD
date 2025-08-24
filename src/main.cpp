@@ -64,7 +64,7 @@ int main(int argc, char* argv[]) {
             case 'h':
             default:
                 std::cout << "options are:" << std::endl;
-                std::cout << "\t-i: input file" << std::endl;
+                std::cout << "\t-i: init file" << std::endl;
                 std::cout << "\t-m: mesh file" << std::endl;
                 std::cout << "\t-o: order" << std::endl;
                 std::cout << "\t-M: Mach Number" << std::endl;
