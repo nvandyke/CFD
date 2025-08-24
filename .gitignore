@@ -1,7 +1,3 @@
-.vs
-CudaCFD\.vs
-*.vcxproj.user
-*\x64
 *.exe
-*.vcxproj.filters
-*\__pycache__
+__pycache__
+
